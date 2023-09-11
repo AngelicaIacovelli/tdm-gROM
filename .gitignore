@@ -1,3 +1,7 @@
 raw_dataset/cardiovascular_dataset/
+raw_dataset/graphs/
+raw_dataset/vtps
 *.vtp
 *.zip
+gromvenv/
+__pycache__/
