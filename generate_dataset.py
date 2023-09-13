@@ -557,8 +557,7 @@ class Bloodflow1DDataset(DGLDataset):
         Returns:
             length of the Dataset
         """
-        return 100
-        # return self.index_map.shape[0]
+        return self.index_map.shape[0]
 
     def __str__(self):
         """
