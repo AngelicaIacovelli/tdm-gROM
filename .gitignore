@@ -7,3 +7,5 @@ gromvenv/
 __pycache__/
 outputs
 checkpoints
+launch.sh
+*.out
