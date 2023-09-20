@@ -38,7 +38,7 @@ performance:
   jit: False
 
 testing:
-  graph: "s0090_0001.21.0.grph"
+  graph: "s0091_0001.21.0.grph"
 
 architecture:
   processor_size: 5
@@ -46,3 +46,11 @@ architecture:
   hidden_dim_edge_encoder: 64
   hidden_dim_processor: 64
   hidden_dim_node_decoder: 64
+  hidden_dim_l: 25 
+  hidden_dim_h: 25
+  in_feats: 18
+  edge_feats: 9
+  latent_size_gnn: 18
+  latent_size_mlp: 64
+  number_hidden_layers_mlp: 2
+  out_size: 2

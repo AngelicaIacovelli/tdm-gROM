@@ -8,4 +8,7 @@ __pycache__/
 outputs
 checkpoints
 launch.sh
+gpualloc.sh
 *.out
+core*
+*.swp

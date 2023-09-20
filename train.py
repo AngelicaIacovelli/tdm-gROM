@@ -21,8 +21,8 @@ import numpy as np
 import hydra
 
 from modulus.distributed.manager import DistributedManager
-from modulus.models.meshgraphnet import MeshGraphNet
-
+#  from modulus.models.meshgraphnet import MeshGraphNet
+from LSTM import GLSTMCell
 # from modulus.datapipes.gnn.mgn_dataset import MGNDataset
 import generate_dataset as gd
 from generate_dataset import generate_normalized_graphs
@@ -66,7 +66,7 @@ class MGNTrainer:
 
         norm_type = {"features": "normal", "labels": "normal"}
         graphs, params = generate_normalized_graphs(
-            "raw_dataset/graphs/", norm_type, cfg.training.geometries
+            "raw_dataset/graphs/", norm_type, cfg.training.geometries, cfg
         )
 
         graph = graphs[list(graphs)[0]]
@@ -111,20 +111,10 @@ class MGNTrainer:
             shuffle=True,
             drop_last=True,
             pin_memory=True,
-            use_ddp=False,
         )
 
         # instantiate the model
-        self.model = MeshGraphNet(
-            params["infeat_nodes"],
-            params["infeat_edges"],
-            2,
-            processor_size=cfg.architecture.processor_size,
-            hidden_dim_node_encoder=cfg.architecture.hidden_dim_node_encoder,
-            hidden_dim_edge_encoder=cfg.architecture.hidden_dim_edge_encoder,
-            hidden_dim_processor=cfg.architecture.hidden_dim_processor,
-            hidden_dim_node_decoder=cfg.architecture.hidden_dim_node_decoder,
-        )
+        self.model = GLSTMCell(cfg)
 
         if cfg.performance.jit:
             self.model = torch.jit.script(self.model).to(self.device)
@@ -210,7 +200,8 @@ class MGNTrainer:
             # impose boundary condition
             nf[imask, 0] = ns[imask, 1, istride]
             nfeatures = torch.cat((states[-1], nf), 1)
-            pred = self.model(nfeatures, graph.edata["efeatures"], graph)
+            graph.ndata["nfeatures_w_bcs"] = nfeatures
+            pred = self.model(graph) 
 
             # add prediction by MeshGraphNet to current state
             new_state = torch.clone(states[-1])

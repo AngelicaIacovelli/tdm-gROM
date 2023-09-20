@@ -321,7 +321,7 @@ def add_features(graphs):
         graph.edata["efeatures"] = th.cat(cf, axis=1)
 
 
-def generate_normalized_graphs(input_dir, norm_type, geometries, statistics=None):
+def generate_normalized_graphs(input_dir, norm_type, geometries, cfg, statistics=None):
     """
     Generate normalized graphs.
 
@@ -384,6 +384,10 @@ def generate_normalized_graphs(input_dir, norm_type, geometries, statistics=None
 
     params = {"statistics": statistics}
     add_features(graphs)
+
+    for graph in graphs:
+        graphs[graph].ndata["h"] = th.ones((graphs[graph].number_of_nodes(), cfg.architecture.hidden_dim_h), dtype=th.float32)
+        graphs[graph].ndata["c"] = th.ones((graphs[graph].number_of_nodes(), cfg.architecture.hidden_dim_l), dtype=th.float32)
 
     return graphs, params
 
@@ -530,6 +534,12 @@ class Bloodflow1DDataset(DGLDataset):
         )
         ef[:, 2:] = ef[:, 2:] + fnoise
         self.lightgraphs[igraph].edata["efeatures"] = ef.squeeze()
+
+        # add h to lightgraph
+        self.lightgraphs[igraph].ndata["h"] = self.graphs[igraph].ndata["h"]
+
+        # add c to lightgraph
+        self.lightgraphs[igraph].ndata["c"] = self.graphs[igraph].ndata["c"]
 
         return self.lightgraphs[igraph]
 
