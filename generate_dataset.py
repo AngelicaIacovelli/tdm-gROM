@@ -426,6 +426,11 @@ class Bloodflow1DDataset(DGLDataset):
         self.times = []
         self.lightgraphs = []
         self.graph_names = graph_names
+        self.mint = np.infty
+        for graph in self.graphs:
+            nt = graph.ndata["nfeatures"].shape[2]
+            self.mint = int(np.min([self.mint, nt]))
+        
         super().__init__(name="dataset")
 
     def create_index_map(self):
@@ -440,7 +445,7 @@ class Bloodflow1DDataset(DGLDataset):
         i = 0
         offset = 0
         ngraphs = len(self.times)
-        stride = self.params["stride"]
+        stride = self.mint
         self.index_map = np.zeros((self.total_times - stride * ngraphs, 2))
         for t in self.times:
             # actual time (minus stride)
@@ -522,7 +527,7 @@ class Bloodflow1DDataset(DGLDataset):
 
         self.lightgraphs[igraph].ndata["nfeatures"] = nf
 
-        ns = features[:, 0:2, itime + 1 : itime + 1 + self.params["stride"]].clone()
+        ns = features[:, 0:2, itime + 1 : itime + 1 + self.mint].clone()
 
         self.lightgraphs[igraph].ndata["next_steps"] = ns
 

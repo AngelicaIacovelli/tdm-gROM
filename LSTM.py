@@ -82,13 +82,13 @@ class MLP(Module):
         return f
 
 class GLSTMCell(Module):
-    """
-    Graph LSTM cell.
+  """
+  Graph LSTM cell.
 
-    This class computes pressure and flowrate updates given the previous system
-    state.
+  This class computes pressure and flowrate updates given the previous system
+  state.
 
-    """
+  """
 
   def __init__(self,cfg):
 

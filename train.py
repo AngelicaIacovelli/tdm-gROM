@@ -104,6 +104,8 @@ class MGNTrainer:
         train_graphs = [graphs[gname] for gname in trainset]
         traindataset = Bloodflow1DDataset(train_graphs, params, trainset)
 
+        self.stride = traindataset.mint
+
         # instantiate dataloader
         self.dataloader = GraphDataLoader(
             traindataset,
@@ -196,7 +198,7 @@ class MGNTrainer:
 
         nnodes = mask.shape[0]
         nf = torch.zeros((nnodes, 1), device=self.device)
-        for istride in range(self.params["stride"]):
+        for istride in range(self.stride):
             # impose boundary condition
             nf[imask, 0] = ns[imask, 1, istride]
             nfeatures = torch.cat((states[-1], nf), 1)
