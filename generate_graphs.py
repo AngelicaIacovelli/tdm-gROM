@@ -128,7 +128,7 @@ def load_vtp(file, input_dir):
     return point_data, points, edges1, edges2
 
 
-def resample_time(field, timestep, period, shift=0):
+def resample_time(field, timesteps=90, shift=0):
     """
     Resample timesteps.
 
@@ -154,9 +154,11 @@ def resample_time(field, timestep, period, shift=0):
 
     t0 = original_timesteps[0]
     T = original_timesteps[-1]
+
     t = [t0 + shift]
     nnodes = field[t0].size
     resampled_field = {t0 + shift: np.zeros(nnodes)}
+
     while t[-1] < T and t[-1] <= t[0] + period:
         t.append(t[-1] + timestep)
         resampled_field[t[-1]] = np.zeros(nnodes)
@@ -255,8 +257,7 @@ def generate_datastructures(vtp_data, resample_perc):
 
 
 def add_time_dependent_fields(
-    graph, graph_data, do_resample_time=False, dt=0.01, copies=1
-):
+    graph, graph_data, do_resample_time=False, timesteps=100, copies=1):
     """
     Add time-dependent data to a graph containing static data. This function
     can be used to create multiple graphs from a single trajectory by
@@ -277,12 +278,16 @@ def add_time_dependent_fields(
     Returns:
         list of 'copies' graphs.
     """
+    
+    pad_timesteps = 10
+    T = dataset_info[fname]["T"]
+    dt = T/(timesteps-pad_timesteps-1)
+    padt = dt*10 
+    T = T + padt
 
     ncopies = 1
     if do_resample_time:
         ncopies = copies
-        dt = 0.01
-        offset = int(np.floor((dt / graph_data["timestep"]) / ncopies))
 
     graphs = []
     intime = 0
@@ -291,25 +296,20 @@ def add_time_dependent_fields(
         c_flowrate = {}
 
         si = graph_data["sampling_indices"]
-        for t in graph_data["times"][intime:]:
+        for t in graph_data["times"]:
             c_pressure[t] = graph_data["pressure"][t][si]
             c_flowrate[t] = graph_data["flowrate"][t][si]
 
         if do_resample_time:
             period = dataset_info[fname]["T"]
             shift = dataset_info[fname]["time_shift"]
-            c_pressure = resample_time(
-                c_pressure, timestep=dt, period=period, shift=shift
-            )
-            c_flowrate = resample_time(
-                c_flowrate, timestep=dt, period=period, shift=shift
-            )
+            c_pressure = resample_time( c_pressure, (timesteps - pad) , shift=shift) 
+            c_flowrate = resample_time( c_flowrate, (timesteps - pad) , shift=shift)
             intime = intime + offset
 
-        padt = 0.1
         new_graph = copy.deepcopy(graph)
-        add_field(new_graph, c_pressure, "pressure", pad=int(padt / dt))
-        add_field(new_graph, c_flowrate, "flowrate", pad=int(padt / dt))
+        add_field(new_graph, c_pressure, "pressure", pad= 10)
+        add_field(new_graph, c_flowrate, "flowrate", pad= 10)
         graphs.append(new_graph)
 
     return graphs
@@ -346,7 +346,7 @@ if __name__ == "__main__":
             )
 
             graphs = add_time_dependent_fields(
-                static_graph, graph_data, do_resample_time=True, dt=0.1, copies=4
+                static_graph, graph_data, do_resample_time=True, timesteps=100, copies=4
             )
 
             for i, graph in enumerate(graphs):

@@ -103,7 +103,7 @@ class GLSTMCell(Module):
                               cfg.architecture.latent_size_gnn,  
                               cfg.architecture.latent_size_mlp,  
                               cfg.architecture.number_hidden_layers_mlp)
-    self.output = MLP(cfg.architecture.latent_size_gnn,
+    self.output = MLP(cfg.architecture.hidden_dim_h,
                       cfg.architecture.out_size,
                       cfg.architecture.latent_size_mlp,
                       cfg.architecture.number_hidden_layers_mlp,
@@ -169,62 +169,8 @@ class GLSTMCell(Module):
         dictionary (key: 'pred_labels', value: decoded features)
 
     """
-    h = self.output(nodes.data['proc_node'])
+    h = self.output(nodes.data['h'])
     return {'pred_labels': h}
-
-
-  def continuity_loss(self, g, flowrate, take_mean = True):
-    """
-    Compute contiuity loss
-
-    Continuity loss as the mass loss occurring  at junctions.
-
-    Arguments:
-        g: graph
-        flowrate: tensor containing nodal values of flowrate
-        take_mean: if True, take mean of junction losses. If
-                    False, take sum. Default -> True.
-    Returns:
-        sum of mass loss occurring at branches and at junctions
-
-    """
-    g.ndata['next_flowrate'] = flowrate.clone()
-
-    # we zero-out inlet and outlet flowrate (otherwise they would send
-    # their flowrate to branch and junction nodes)
-    g.ndata['next_flowrate'][g.ndata['inlet_mask'].bool()] = 0
-    g.ndata['next_flowrate'][g.ndata['outlet_mask'].bool()] = 0
-
-    # # we send flowrate through branches, compute the mean
-    # # of neighboring nodes, and compute the diff with our estimate
-    # g.update_all(fn.copy_u('next_flowrate', 'm'),
-    #              fn.sum('m', 'sum_flowrate'))
-    # # branch nodes have only two neighbors
-    # diff = th.abs(2 * g.ndata['next_flowrate'] - g.ndata['sum_flowrate'])
-    # diff = diff * g.ndata['continuity_mask']
-    # if take_mean:
-    #     branch_continuity = th.mean(diff)
-    # else:
-    #     branch_continuity = th.sum(diff)
-
-    # we keep flowrate at inlet and outlets of junctions
-    g.ndata['flow_junction'] = g.ndata['next_flowrate'] * \
-                                g.ndata['jun_mask']
-
-    g.update_all(fn.copy_u('flow_junction', 'm'),
-                  fn.sum('m', 'sum_flowrate'))
-
-    # we use the inlet to compute the difference
-    diff = th.abs(g.ndata['sum_flowrate'] - g.ndata['next_flowrate'])
-    diff = diff * g.ndata['jun_inlet_mask']
-
-    if take_mean:
-        junction_continuity = th.sum(diff) / \
-                            th.sum(g.ndata['jun_inlet_mask'])
-    else:
-        junction_continuity = th.sum(diff)
-
-    return junction_continuity
 
 
 #VECTOR i
@@ -255,9 +201,8 @@ class GLSTMCell(Module):
     i = Wx + Uih_sum
     #print("This is i: ", i)
 
-    i = th.nn.functional.leaky_relu(i)
-    #print("This is leaky_relu(i): ", i)
-
+    i = th.sigmoid(i)
+    #print('i: ', i)
     return {'i': i}
 
 
@@ -272,8 +217,8 @@ class GLSTMCell(Module):
     Ufh = self.U_f(h)
 
     f = Wx + Ufh
-    f = th.nn.functional.leaky_relu(f)
-
+    f = th.sigmoid(f)
+    #print("f: ",f)
     return {'f': f}
 
 
@@ -289,7 +234,8 @@ class GLSTMCell(Module):
     Uoh_sum = nodes.data['Uoh_sum']
     Wx = self.W_o(x)
     o = Wx + Uoh_sum
-    o = th.nn.functional.leaky_relu(o)
+    o = th.sigmoid(o)
+    #print("o: ", o)
     return {'o': o}
 
 
@@ -306,6 +252,7 @@ class GLSTMCell(Module):
     Wx = self.W_u(x)
     u = Wx + Uuh_sum
     u = th.tanh(u)
+    #print("u: ", u)
     return {'u': u}
 
 
@@ -314,7 +261,7 @@ class GLSTMCell(Module):
   def compute_fc(self, edges):
     f = edges.data['f']
     c = edges.src['c']
-    fc = f * c
+    fc = f * (th.sigmoid(c))
     return {'fc': fc}
 
   def compute_c(self, nodes):
@@ -323,6 +270,7 @@ class GLSTMCell(Module):
     fc_sum = nodes.data['fc_sum']  # Assuming 'fc_sum' already exists or is initialized.
     c = i * u
     c = fc_sum + c
+    #print("c: ", c)
     return {'c': c}
 
 
@@ -333,6 +281,7 @@ class GLSTMCell(Module):
     c = nodes.data['c']
     c = th.tanh(c)
     h = o * c
+    #print("h: ", h)
     return {'h': h}
 
 
@@ -388,5 +337,5 @@ class GLSTMCell(Module):
 
   # DECODE
       g.apply_nodes(self.decode_nodes)
-
+  
       return g.ndata['pred_labels']

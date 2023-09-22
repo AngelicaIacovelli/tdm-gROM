@@ -283,7 +283,8 @@ def add_features(graphs):
         )
         add_feature(graph.ndata["type"].repeat(1, 1, ntimes), nodes_features, "type")
         add_feature(graph.ndata["T"].repeat(1, 1, ntimes), nodes_features, "T")
-
+        add_feature(graph.ndata["dt"].repeat(1, 1, ntimes), nodes_features, "dt")
+    
         loading = graph.ndata["loading"]
 
         p = graph.ndata["pressure"].clone()
@@ -340,7 +341,7 @@ def generate_normalized_graphs(input_dir, norm_type, geometries, cfg, statistics
 
     """
     fields_to_normalize = {
-        "node": ["area", "pressure", "flowrate", "T"],
+        "node": ["area", "pressure", "flowrate", "T", "dt"],
         "edge": ["distance"],
         "outlet_node": ["resistance1", "capacitance", "resistance2"],
     }
@@ -386,8 +387,8 @@ def generate_normalized_graphs(input_dir, norm_type, geometries, cfg, statistics
     add_features(graphs)
 
     for graph in graphs:
-        graphs[graph].ndata["h"] = th.ones((graphs[graph].number_of_nodes(), cfg.architecture.hidden_dim_h), dtype=th.float32)
-        graphs[graph].ndata["c"] = th.ones((graphs[graph].number_of_nodes(), cfg.architecture.hidden_dim_l), dtype=th.float32)
+        graphs[graph].ndata["h"] = th.zeros((graphs[graph].number_of_nodes(), cfg.architecture.hidden_dim_h), dtype=th.float32)
+        graphs[graph].ndata["c"] = th.zeros((graphs[graph].number_of_nodes(), cfg.architecture.hidden_dim_l), dtype=th.float32)
 
     return graphs, params
 

@@ -26,7 +26,7 @@ training:
   rate_noise_features: 1.E-5
   train_test_split: 0.9
   loss_weight_1st_timestep: 1
-  loss_weight_other_timesteps: 0.5
+  loss_weight_other_timesteps: 1
   loss_weight_boundary_nodes: 100
 
 checkpoints:
@@ -48,9 +48,9 @@ architecture:
   hidden_dim_node_decoder: 64
   hidden_dim_l: 25 
   hidden_dim_h: 25
-  in_feats: 18
+  in_feats: 19
   edge_feats: 9
-  latent_size_gnn: 18
+  latent_size_gnn: 19
   latent_size_mlp: 64
   number_hidden_layers_mlp: 2
   out_size: 2
