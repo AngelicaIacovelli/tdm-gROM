@@ -25,7 +25,8 @@ import graph_tools as grpt
 import scipy
 import torch as th
 
-def add_field(graph, field, field_name, offset=0, pad=10):
+
+def add_field(graph, field, field_name, offset=0):
     """
     Add time-dependent fields to a DGL graph.
 
@@ -39,47 +40,24 @@ def add_field(graph, field, field_name, offset=0, pad=10):
         field_name (string): name of the field
         offset (int): number of timesteps to skip.
                       Default: 0 -> keep all timesteps
-        pad (int): number of timesteps to add for interpolation from zero
-                   zero initial conditions. Default: 0 -> start from actual
-                   initial condition
     """
     timesteps = [float(t) for t in field]
     timesteps.sort()
     dt = timesteps[1] - timesteps[0]
     T = timesteps[-1]
+
     # we use the third dimension for time
-    field_t = th.zeros(
-        (list(field.values())[0].shape[0], 1, len(timesteps) - offset + pad)
-    )
+    field_t = th.zeros((list(field.values())[0].shape[0], 1, len(timesteps) - offset))
 
     times = [t for t in field]
     times.sort()
     times = times[offset:]
 
-    loading_t = th.zeros(
-        (list(field.values())[0].shape[0], 1, len(timesteps) - offset + pad),
-        dtype=th.bool,
-    )
-
-    if pad > 0:
-        inc = th.tensor(field[times[0]], dtype=th.float32)
-        deft = inc * 0
-        if field_name == "pressure":
-            minp = np.infty
-            for t in field:
-                minp = np.min((minp, np.min(field[t])))
-            deft = deft + minp
-        for i in range(pad):
-            field_t[:, 0, i] = deft * (pad - i) / pad + inc * (i / pad)
-            loading_t[:, 0, i] = True
-
     for i, t in enumerate(times):
         f = th.tensor(field[t], dtype=th.float32)
-        field_t[:, 0, i + pad] = f
-        loading_t[:, 0, i + pad] = False
+        field_t[:, 0, i] = f
 
     graph.ndata[field_name] = field_t
-    graph.ndata["loading"] = loading_t
     graph.ndata["dt"] = th.reshape(
         th.ones(graph.num_nodes(), dtype=th.float32) * dt, (-1, 1, 1)
     )
@@ -128,7 +106,7 @@ def load_vtp(file, input_dir):
     return point_data, points, edges1, edges2
 
 
-def resample_time(field, timesteps=90, shift=0):
+def resample_time(field, timesteps, period, shift=0):
     """
     Resample timesteps.
 
@@ -138,12 +116,10 @@ def resample_time(field, timesteps=90, shift=0):
     Arguments:
         field: dictionary containing the field for all timesteps
                (key: timestep, value: n-dimensional numpy array)
-        timestep (float): the new timestep
-        period (float): period of the simulation. We restrict to one cardiac
-                        cycle
-
+        timesteps (int): number of timesteps. Default -> 100
+        period (float): period of the simulation (one cardiac cycle in seconds).
         shift (float): apply shift (s) to start at the beginning of the systole.
-                       Default value -> 0
+                       Default -> 0
 
     Returns:
         dictionary containing the field for all resampled timesteps
@@ -154,9 +130,12 @@ def resample_time(field, timesteps=90, shift=0):
 
     t0 = original_timesteps[0]
     T = original_timesteps[-1]
+    timestep = (T - t0) / (timesteps - 1)
 
     t = [t0 + shift]
     nnodes = field[t0].size
+    # allocating space for the initial condition. This is a dictionary where the key
+    # is the timestep and the value is the vector of nodal values.
     resampled_field = {t0 + shift: np.zeros(nnodes)}
 
     while t[-1] < T and t[-1] <= t[0] + period:
@@ -177,12 +156,13 @@ def resample_time(field, timesteps=90, shift=0):
     return resampled_field
 
 
-def generate_datastructures(vtp_data, resample_perc):
+def generate_datastructures(vtp_data, dataset_info, resample_perc):
     """
     Generate data structures for graph generation from vtp data.
 
     Arguments:
         vtp_data: tuple containing data extracted from the vtp using load_vtp
+        dataset_info: dictionary containing dataset information
         resample_perc: percentage of points in the original vtp file we keep
                        (between 0 and 1)
     Returns:
@@ -228,6 +208,7 @@ def generate_datastructures(vtp_data, resample_perc):
 
     times = [t for t in pressure]
     timestep = float(dataset_info[file.replace(".vtp", "")]["dt"])
+    period = float(dataset_info[file.replace(".vtp", "")]["T"])
     for t in times:
         pressure[t * timestep] = pressure[t]
         flowrate[t * timestep] = flowrate[t]
@@ -251,13 +232,19 @@ def generate_datastructures(vtp_data, resample_perc):
         "flowrate": flowrate,
         "timestep": timestep,
         "times": times,
+        "period": period,
     }
 
     return graph_data
 
 
 def add_time_dependent_fields(
-    graph, graph_data, do_resample_time=False, timesteps=100, copies=1):
+    graph,
+    graph_data,
+    do_resample_time=False,
+    timesteps=101,
+    ncopies=1,
+):
     """
     Add time-dependent data to a graph containing static data. This function
     can be used to create multiple graphs from a single trajectory by
@@ -271,26 +258,15 @@ def add_time_dependent_fields(
                     generate_datastructures)
         do_resample_time (bool): specify whether we should resample the
                                  the timesteps. Default -> False
-        dt (double): timestep size used for resampling. Default -> 0.01
-        copies: number of copies to generate from a single trajectory (for
+        timesteps (int): number of timesteps to use for resampling. Default -> 101
+        ncopies: number of copies to generate from a single trajectory (for
                 data augmentation). Default -> 1
 
     Returns:
         list of 'copies' graphs.
     """
-    
-    pad_timesteps = 10
-    T = dataset_info[fname]["T"]
-    dt = T/(timesteps-pad_timesteps-1)
-    padt = dt*10 
-    T = T + padt
-
-    ncopies = 1
-    if do_resample_time:
-        ncopies = copies
 
     graphs = []
-    intime = 0
     for icopy in range(ncopies):
         c_pressure = {}
         c_flowrate = {}
@@ -301,15 +277,31 @@ def add_time_dependent_fields(
             c_flowrate[t] = graph_data["flowrate"][t][si]
 
         if do_resample_time:
-            period = dataset_info[fname]["T"]
             shift = dataset_info[fname]["time_shift"]
-            c_pressure = resample_time( c_pressure, (timesteps - pad) , shift=shift) 
-            c_flowrate = resample_time( c_flowrate, (timesteps - pad) , shift=shift)
-            intime = intime + offset
+            # some simulations in the dataset need to be translated in the time because
+            # the start of the simuluation does not coincide with the onset of the
+            # systole. In the json associated with the dataset, we added a parameter
+            # to determine how much the translation should be. Here we are also adding
+            # a small shift to create additional trajectories for data augmentation.
+            dt = graph_data["period"] / (timesteps - 1)
+            data_augmentation_shift = dt / ncopies * icopy
+            actual_shift = data_augmentation_shift + shift
+            c_pressure = resample_time(
+                c_pressure,
+                timesteps,
+                period=graph_data["period"],
+                shift=actual_shift,
+            )
+            c_flowrate = resample_time(
+                c_flowrate,
+                timesteps,
+                period=graph_data["period"],
+                shift=actual_shift,
+            )
 
         new_graph = copy.deepcopy(graph)
-        add_field(new_graph, c_pressure, "pressure", pad= 10)
-        add_field(new_graph, c_flowrate, "flowrate", pad= 10)
+        add_field(new_graph, c_pressure, "pressure")
+        add_field(new_graph, c_flowrate, "flowrate")
         graphs.append(new_graph)
 
     return graphs
@@ -333,9 +325,11 @@ if __name__ == "__main__":
     for file in tqdm(files, desc="Generating graphs", colour="green"):
         if ".vtp" in file and "s" in file:
             vtp_data = load_vtp(file, input_dir)
-            graph_data = generate_datastructures(vtp_data, resample_perc=0.06)
-
             fname = file.replace(".vtp", "")
+
+            graph_data = generate_datastructures(
+                vtp_data, dataset_info, resample_perc=0.06
+            )
             static_graph = grpt.generate_graph(
                 graph_data["point_data"],
                 graph_data["points"],
@@ -346,7 +340,11 @@ if __name__ == "__main__":
             )
 
             graphs = add_time_dependent_fields(
-                static_graph, graph_data, do_resample_time=True, timesteps=100, copies=4
+                static_graph,
+                graph_data,
+                do_resample_time=True,
+                timesteps=101,
+                ncopies=4,
             )
 
             for i, graph in enumerate(graphs):

@@ -21,8 +21,10 @@ import numpy as np
 import hydra
 
 from modulus.distributed.manager import DistributedManager
+
 #  from modulus.models.meshgraphnet import MeshGraphNet
 from LSTM import GLSTMCell
+
 # from modulus.datapipes.gnn.mgn_dataset import MGNDataset
 import generate_dataset as gd
 from generate_dataset import generate_normalized_graphs
@@ -203,15 +205,15 @@ class MGNTrainer:
             nf[imask, 0] = ns[imask, 1, istride]
             nfeatures = torch.cat((states[-1], nf), 1)
             graph.ndata["nfeatures_w_bcs"] = nfeatures
-            pred = self.model(graph) 
+            pred = self.model(graph)
 
-            #print(istride)
-            #print(graph.ndata["h"])
+            # print(istride)
+            # print(graph.ndata["h"])
 
             # add prediction by MeshGraphNet to current state
             new_state = torch.clone(states[-1])
             new_state[:, 0:2] += pred
-            #print("New state: ", new_state[:, 0:2])
+            # print("New state: ", new_state[:, 0:2])
             # impose exact flow rate at the inlet (to remove it from loss)
             new_state[imask, 1] = ns[imask, 1, istride]
             states.append(new_state)
