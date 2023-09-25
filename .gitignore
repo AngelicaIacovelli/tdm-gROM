@@ -12,3 +12,4 @@ gpualloc.sh
 *.out
 core*
 *.swp
+*.png
