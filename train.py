@@ -261,7 +261,7 @@ def do_training(cfg: DictConfig):
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
         for graph in trainer.dataloader:
             loss = trainer.train(graph)
-            loss_vector.append(loss.cpu().detach().numpy())  # Append the loss value to the vector
+        loss_vector.append(loss.cpu().detach().numpy())  # Append the loss value to the vector
 
         logger.info(
             f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}"
@@ -296,7 +296,7 @@ def do_training(cfg: DictConfig):
     # Plot loss_vector
     plt.figure()
     ax = plt.axes()
-    ax.plot(loss_vector, label="loss")
+    ax.semilogy(loss_vector, label="loss")
     ax.legend()
     plt.savefig("checkpoints/loss.png", bbox_inches="tight")
 

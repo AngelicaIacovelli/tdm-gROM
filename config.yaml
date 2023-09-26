@@ -19,7 +19,7 @@ scheduler:
 
 training:
   batch_size: 100
-  epochs: 1000
+  epochs: 2000
   geometries: "healthy"
   stride: 5
   rate_noise: 100
