@@ -117,22 +117,23 @@ class GLSTMCell(Module):
             False,
         )
 
+        latent_gnn_dim = cfg.architecture.latent_size_gnn
         hidden_dim_l = cfg.architecture.hidden_dim_l
         hidden_dim_h = cfg.architecture.hidden_dim_h
-        in_feats = cfg.architecture.in_feats
-        edge_feats = cfg.architecture.edge_feats
 
-        self.W_i = Linear(in_feats, hidden_dim_l, bias=True).float()
+        self.W_i = Linear(latent_gnn_dim, hidden_dim_l, bias=True).float()
         self.U_i = Linear(hidden_dim_h, hidden_dim_l, bias=False).float()
 
-        self.W_f = Linear(edge_feats, hidden_dim_l, bias=True).float()
+        self.W_f = Linear(latent_gnn_dim, hidden_dim_l, bias=True).float()
         self.U_f = Linear(hidden_dim_h, hidden_dim_l, bias=False).float()
 
-        self.W_o = Linear(in_feats, hidden_dim_l, bias=True).float()
+        self.W_o = Linear(latent_gnn_dim, hidden_dim_l, bias=True).float()
         self.U_o = Linear(hidden_dim_h, hidden_dim_l, bias=False).float()
 
-        self.W_u = Linear(in_feats, hidden_dim_l, bias=True).float()
+        self.W_u = Linear(latent_gnn_dim, hidden_dim_l, bias=True).float()
         self.U_u = Linear(hidden_dim_h, hidden_dim_l, bias=False).float()
+
+        self.autoloop_iterations = cfg.architecture.autoloop_iterations
 
     def encode_nodes(self, nodes):
         """
@@ -214,7 +215,7 @@ class GLSTMCell(Module):
     # VECTOR f
 
     def compute_f(self, edges):
-        x = edges.data["efeatures"]
+        x = edges.data["proc_edge"]
         x = x.float()
         Wx = self.W_f(x)
 
@@ -307,31 +308,33 @@ class GLSTMCell(Module):
 
         # PROCESS
 
-        # Vector i
-        g.apply_edges(self.compute_Uih)
-        g.update_all(fn.copy_e("Uih", "m"), fn.sum("m", "Uih_sum"))
-        g.apply_nodes(self.compute_i)
+        for i in range(self.autoloop_iterations): 
 
-        # Vector f
-        g.apply_edges(self.compute_f)
+            # Vector i
+            g.apply_edges(self.compute_Uih)
+            g.update_all(fn.copy_e("Uih", "m"), fn.sum("m", "Uih_sum"))
+            g.apply_nodes(self.compute_i)
 
-        # Vector o
-        g.apply_edges(self.compute_Uoh)
-        g.update_all(fn.copy_e("Uoh", "m"), fn.sum("m", "Uoh_sum"))
-        g.apply_nodes(self.compute_o)
+            # Vector f
+            g.apply_edges(self.compute_f)
 
-        # Vector u
-        g.apply_edges(self.compute_Uuh)
-        g.update_all(fn.copy_e("Uuh", "m"), fn.sum("m", "Uuh_sum"))
-        g.apply_nodes(self.compute_u)
+            # Vector o
+            g.apply_edges(self.compute_Uoh)
+            g.update_all(fn.copy_e("Uoh", "m"), fn.sum("m", "Uoh_sum"))
+            g.apply_nodes(self.compute_o)
 
-        # Vector c
-        g.apply_edges(self.compute_fc)
-        g.update_all(fn.copy_e("fc", "m"), fn.sum("m", "fc_sum"))
-        g.apply_nodes(self.compute_c)
+            # Vector u
+            g.apply_edges(self.compute_Uuh)
+            g.update_all(fn.copy_e("Uuh", "m"), fn.sum("m", "Uuh_sum"))
+            g.apply_nodes(self.compute_u)
 
-        # Vector h
-        g.apply_nodes(self.compute_h)
+            # Vector c
+            g.apply_edges(self.compute_fc)
+            g.update_all(fn.copy_e("fc", "m"), fn.sum("m", "fc_sum"))
+            g.apply_nodes(self.compute_c)
+
+            # Vector h
+            g.apply_nodes(self.compute_h)
 
         # DECODE
         g.apply_nodes(self.decode_nodes)
