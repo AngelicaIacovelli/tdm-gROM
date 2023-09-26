@@ -262,6 +262,7 @@ def add_features(graphs):
         "capacitance",
         "resistance2",
         "loading",
+        "dt",
     ]
 
     edges_features = ["rel_position", "distance", "type"]
@@ -285,8 +286,6 @@ def add_features(graphs):
         add_feature(graph.ndata["T"].repeat(1, 1, ntimes), nodes_features, "T")
         add_feature(graph.ndata["dt"].repeat(1, 1, ntimes), nodes_features, "dt")
 
-        loading = graph.ndata["loading"]
-
         p = graph.ndata["pressure"].clone()
         q = graph.ndata["flowrate"].clone()
 
@@ -307,12 +306,7 @@ def add_features(graphs):
         add_feature(r2, nodes_features, "resistance2")
 
         cfeatures = th.cat(cf, axis=1)
-
-        if "loading" in nodes_features:
-            loading = graph.ndata["loading"]
-            graph.ndata["nfeatures"] = th.cat((p, q, cfeatures, loading), axis=1)
-        else:
-            graph.ndata["nfeatures"] = th.cat((p, q, cfeatures), axis=1)
+        graph.ndata["nfeatures"] = th.cat((p, q, cfeatures), axis=1)
 
         cf = []
         add_feature(graph.edata["rel_position"], edges_features, "rel_position")
@@ -440,32 +434,6 @@ class Bloodflow1DDataset(DGLDataset):
 
         super().__init__(name="dataset")
 
-    def create_index_map(self):
-        """
-        Create index map.
-
-        Index map is a n x 2 array (n is the total number of timesteps in the
-        dataset) mapping a graph index (first column) to the timestep index
-        (second column).
-
-        """
-        i = 0
-        offset = 0
-        ngraphs = len(self.times)
-        stride = self.mint
-        self.index_map = np.zeros((self.total_times - stride * ngraphs, 2))
-        for t in self.times:
-            # actual time (minus stride)
-            at = t - stride
-            graph_index = np.ones((at, 1)) * i
-            time_index = np.expand_dims(np.arange(0, at), axis=1)
-            self.index_map[offset : at + offset, :] = np.concatenate(
-                (graph_index, time_index), axis=1
-            )
-            i = i + 1
-            offset = offset + at
-        self.index_map = np.array(self.index_map, dtype=int)
-
     def process(self):
         """
         Process Dataset.
@@ -493,8 +461,6 @@ class Bloodflow1DDataset(DGLDataset):
         self.times = np.array(self.times)
         self.total_times = np.sum(self.times)
 
-        self.create_index_map()
-
         end = time.time()
         elapsed_time = end - start
         print("\tDataset generated in {:0.2f} s".format(elapsed_time))
@@ -511,16 +477,12 @@ class Bloodflow1DDataset(DGLDataset):
         Returns:
             The DGL graph
         """
-        indices = self.index_map[i, :]
-        igraph = indices[0]
-        itime = indices[1]
-
         features = self.graphs[igraph].ndata["nfeatures"].clone()
 
-        nf = features[:, :, itime].clone()
+        nf = features[:, :, 0].clone()
         nfsize = nf[:, :2].shape
 
-        dt = self.graphs[igraph].ndata["dt"][0]
+        dt = self.graphs[i].ndata["dt"][0]
 
         curnoise = np.random.normal(0, self.params["rate_noise"] * dt, nfsize)
         nf[:, :2] = nf[:, :2] + curnoise
@@ -529,31 +491,31 @@ class Bloodflow1DDataset(DGLDataset):
             0, self.params["rate_noise_features"], nf[:, 2:].shape
         )
         # flowrate at inlet is exact
-        fnoise[self.graphs[igraph].ndata["inlet_mask"].bool(), 1] = 0
+        fnoise[self.graphs[i].ndata["inlet_mask"].bool(), 1] = 0
         nf[:, 2:] = nf[:, 2:] + fnoise
 
-        self.lightgraphs[igraph].ndata["nfeatures"] = nf
+        self.lightgraphs[i].ndata["nfeatures"] = nf
 
-        ns = features[:, 0:2, itime + 1 : itime + 1 + self.mint].clone()
+        ns = features[:, 0:2, 1 : 1 + self.mint].clone()
 
-        self.lightgraphs[igraph].ndata["next_steps"] = ns
+        self.lightgraphs[i].ndata["next_steps"] = ns
 
-        ef = self.graphs[igraph].edata["efeatures"]
+        ef = self.graphs[i].edata["efeatures"]
 
         # add regular noise to the edge features to prevent overfitting
         fnoise = np.random.normal(
             0, self.params["rate_noise_features"], ef[:, 2:].shape
         )
         ef[:, 2:] = ef[:, 2:] + fnoise
-        self.lightgraphs[igraph].edata["efeatures"] = ef.squeeze()
+        self.lightgraphs[i].edata["efeatures"] = ef.squeeze()
 
         # add h to lightgraph
-        self.lightgraphs[igraph].ndata["h"] = self.graphs[igraph].ndata["h"]
+        self.lightgraphs[i].ndata["h"] = self.graphs[i].ndata["h"]
 
         # add c to lightgraph
-        self.lightgraphs[igraph].ndata["c"] = self.graphs[igraph].ndata["c"]
+        self.lightgraphs[i].ndata["c"] = self.graphs[i].ndata["c"]
 
-        return self.lightgraphs[igraph]
+        return self.lightgraphs[i]
 
     def denormalize(tensor, mean, stdv):
         return tensor * stdv + mean
@@ -568,7 +530,7 @@ class Bloodflow1DDataset(DGLDataset):
         Returns:
             ith lightgraph
         """
-        return self.get_lightgraph(i)
+        return self.graphs[i]
 
     def __len__(self):
         """
@@ -579,7 +541,7 @@ class Bloodflow1DDataset(DGLDataset):
         Returns:
             length of the Dataset
         """
-        return self.index_map.shape[0]
+        return len(self.graphs)
 
     def __str__(self):
         """

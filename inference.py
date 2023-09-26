@@ -30,7 +30,6 @@ from omegaconf import DictConfig
 import json
 import time
 
-
 def denormalize(tensor, mean, stdv):
     """Denormalize a tensor given a mean and a standard deviation.
        denormalized_tensor = (tensor * stdv) + mean
@@ -259,7 +258,6 @@ class MGNRollout:
 
         plt.figure()
         ax = plt.axes()
-
         ax.plot(p_pred_values, label="pred")
         ax.plot(p_exact_values, label="exact")
         ax.legend()
@@ -267,11 +265,11 @@ class MGNRollout:
 
         plt.figure()
         ax = plt.axes()
-
         ax.plot(q_pred_values, label="pred")
         ax.plot(q_exact_values, label="exact")
         ax.legend()
         plt.savefig("flowrate.png", bbox_inches="tight")
+
 
 
 @hydra.main(version_base=None, config_path=".", config_name="config")

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import torch
+import matplotlib.pyplot as plt
 from dgl.dataloading import GraphDataLoader
 from torch.cuda.amp import GradScaler
 import time, os
@@ -183,7 +184,7 @@ class MGNTrainer:
         graph = graph.to(self.device)
         self.optimizer.zero_grad()
         loss = 0
-        ns = graph.ndata["next_steps"]
+        ns = graph.ndata["nfeatures"][:,0:2,1:]
 
         # create mask to weight boundary nodes more in loss
         mask = torch.ones(ns[:, :, 0].shape, device=self.device)
@@ -196,11 +197,13 @@ class MGNTrainer:
         mask[outmask, 0] = mask[outmask, 0] * bcoeff
         mask[outmask, 1] = mask[outmask, 1] * bcoeff
 
-        states = [graph.ndata["nfeatures"].clone()]
+        states = [graph.ndata["nfeatures"][:,:,0]]
+
+        graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
 
         nnodes = mask.shape[0]
         nf = torch.zeros((nnodes, 1), device=self.device)
-        for istride in range(self.stride):
+        for istride in range(self.stride-1):
             # impose boundary condition
             nf[imask, 0] = ns[imask, 1, istride]
             nfeatures = torch.cat((states[-1], nf), 1)
@@ -254,9 +257,11 @@ def do_training(cfg: DictConfig):
     # training loop
     start = time.time()
     logger.info("Training started...")
+    loss_vector = []  # Initialize an empty list to store loss values
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
         for graph in trainer.dataloader:
             loss = trainer.train(graph)
+            loss_vector.append(loss.cpu().detach().numpy())  # Append the loss value to the vector
 
         logger.info(
             f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}"
@@ -288,6 +293,13 @@ def do_training(cfg: DictConfig):
             json.dump(trainer.params, outf, default=default, indent=4)
     logger.info("Training completed!")
 
+    # Plot loss_vector
+    plt.figure()
+    ax = plt.axes()
+    ax.plot(loss_vector, label="loss")
+    ax.legend()
+    plt.savefig("checkpoints/loss.png", bbox_inches="tight")
+
 
 """
     Perform training over all graphs in the dataset.
@@ -298,3 +310,5 @@ def do_training(cfg: DictConfig):
     """
 if __name__ == "__main__":
     do_training()
+
+
