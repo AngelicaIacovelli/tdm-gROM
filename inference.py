@@ -29,6 +29,27 @@ import hydra
 from omegaconf import DictConfig
 import json
 import time
+import copy
+from tqdm import tqdm
+
+
+def evaluate_model(cfg, logger, model, params, graphs):
+    rollout = Rollout(logger, cfg, model, params, graphs)
+    testset = params["test_split"]
+    ep_tot = 0
+    eq_tot = 0
+    for graph in tqdm(testset, desc="Testing graphs", colour="green"):
+        rollout.predict(graph, do_print=False)
+        rollout.denormalize()
+        ep, eq = rollout.compute_errors(do_print=False)
+        ep_tot += ep
+        eq_tot += eq
+    ep_tot = ep_tot/len(testset)
+    eq_tot = eq_tot/len(testset)
+    logger.info(f"Average relative error in pressure: {ep_tot * 100}%")
+    logger.info(f"Average relative error in flowrate: {eq_tot * 100}%")
+    return ep_tot, eq_tot
+        
 
 def denormalize(tensor, mean, stdv):
     """Denormalize a tensor given a mean and a standard deviation.
@@ -44,31 +65,61 @@ def denormalize(tensor, mean, stdv):
     """
     return tensor * stdv + mean
 
+def load_model(cfg):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
-class MGNRollout:
-    def __init__(self, logger, cfg):
+    # instantiate the model
+    model = GLSTMCell(cfg)
+
+    if cfg.performance.jit:
+        model = torch.jit.script(model).to(device)
+
+    else:
+        model = model.to(device)
+
+    scaler = GradScaler()
+    # enable eval mode
+    model.eval()
+
+    # load checkpoint
+    _ = load_checkpoint(
+        os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
+        models=model,
+        device=device,
+        scaler=scaler,
+    )
+
+    return model
+
+
+class Rollout:
+    def __init__(self, logger, cfg, model, params = None, graphs = None):
         """Performs the rollout phase on the geometry specified in
         'config.yaml' (testing.graph) and computes the error"""
 
         # set device
 
-        # self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.device = "cpu"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         self.logger = logger
-        logger.info(f"Using {self.device} device")
+        if logger != None:
+            logger.info(f"Using {self.device} device")
 
-        params = json.load(open("checkpoints/parameters.json"))
-
-        norm_type = {"features": "normal", "labels": "normal"}
-        graphs, params = generate_normalized_graphs(
-            "raw_dataset/graphs/",
-            norm_type,
-            cfg.training.geometries,
-            cfg,
-            params["statistics"],
-        )
+        if params == None:
+            params = json.load(open("checkpoints/parameters.json"))
+        
+        if graphs == None:
+            norm_type = {"features": "normal", "labels": "normal"}
+            graphs, _ = generate_normalized_graphs(
+                "raw_dataset/graphs/",
+                norm_type,
+                cfg.training.geometries,
+                cfg,
+                params["statistics"],
+            )
         graph = graphs[list(graphs)[0]]
+
+        self.model = model
 
         infeat_nodes = graph.ndata["nfeatures"].shape[1] + 1
         infeat_edges = graph.edata["efeatures"].shape[1]
@@ -99,27 +150,6 @@ class MGNRollout:
 
         self.graphs = graphs
 
-        # instantiate the model
-        self.model = GLSTMCell(cfg)
-
-        if cfg.performance.jit:
-            self.model = torch.jit.script(self.model).to(self.device)
-
-        else:
-            self.model = self.model.to(self.device)
-
-        self.scaler = GradScaler()
-        # enable eval mode
-        self.model.eval()
-
-        # load checkpoint
-        _ = load_checkpoint(
-            os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
-            models=self.model,
-            device=self.device,
-            scaler=self.scaler,
-        )
-
         self.params = params
         self.var_identifier = {"p": 0, "q": 1}
 
@@ -139,7 +169,7 @@ class MGNRollout:
             rflowrate = torch.mean(flowrate[idxs])
             flowrate[idxs] = rflowrate
 
-    def predict(self, graph_name):
+    def predict(self, graph_name, do_print = True):
         """
         Perform rollout phase for a single graph in the dataset
 
@@ -148,14 +178,14 @@ class MGNRollout:
 
         """
         graph = self.graphs[graph_name]
-        graph = graph.to(self.device)
+        graph = copy.deepcopy(graph.to(self.device))
         self.graph = graph
 
         ntimes = graph.ndata["pressure"].shape[-1]
         nnodes = graph.ndata["pressure"].shape[0]
 
-        self.pred = np.zeros((nnodes, 2, ntimes))
-        self.exact = graph.ndata["nfeatures"][:, 0:2, :].detach().numpy()
+        self.pred = torch.zeros((nnodes, 2, ntimes), device=self.device)
+        self.exact = graph.ndata["nfeatures"][:, 0:2, :]
         self.pred[:, 0:2, 0] = graph.ndata["nfeatures"][:, 0:2, 0]
 
         inmask = graph.ndata["inlet_mask"].bool()
@@ -172,7 +202,7 @@ class MGNRollout:
             nf[inmask, 0] = graph.ndata["nfeatures"][inmask, 1, i + 1]
             nfeatures = torch.cat((invar, nf), 1)
             graph.ndata["nfeatures_w_bcs"] = nfeatures
-            pred = self.model(graph).detach()
+            pred = self.model(graph)
             invar[:, 0:2] += pred
             # we set the next flow rate at the inlet since that is known
             invar[inmask, 1] = graph.ndata["nfeatures"][inmask, 1, i + 1]
@@ -182,7 +212,8 @@ class MGNRollout:
             self.pred[:, :, i + 1] = invar[:, 0:2]
 
         end = time.time()
-        self.logger.info(f"Rollout took {end - start} seconds!")
+        if do_print:
+            self.logger.info(f"Rollout took {end - start} seconds!")
 
     def denormalize(self):
         """
@@ -214,7 +245,7 @@ class MGNRollout:
             self.params["statistics"]["flowrate"]["stdv"],
         )
 
-    def compute_errors(self):
+    def compute_errors(self, do_print = True):
         """
         Compute errors in pressure and flow rate. This function must be called
         after 'predict' and 'denormalize'. The errors are computed as l2 errors
@@ -222,14 +253,17 @@ class MGNRollout:
 
         """
         bm = torch.reshape(self.graph.ndata["branch_mask"], (-1, 1, 1))
-        bm = bm.repeat(1, 2, self.pred.shape[2]).detach().numpy()
+        bm = bm.repeat(1, 2, self.pred.shape[2])
         diff = (self.pred - self.exact) * bm
-        errs = np.sum(np.sum(diff**2, axis=0), axis=1)
-        errs = errs / np.sum(np.sum((self.exact * bm) ** 2, axis=0), axis=1)
-        errs = np.sqrt(errs)
+        errs = torch.sum(torch.sum(diff**2, axis=0), axis=1)
+        errs = errs / torch.sum(torch.sum((self.exact * bm) ** 2, axis=0), axis=1)
+        errs = torch.sqrt(errs)
 
-        self.logger.info(f"Relative error in pressure: {errs[0] * 100}%")
-        self.logger.info(f"Relative error in flowrate: {errs[1] * 100}%")
+        if do_print:
+            self.logger.info(f"Relative error in pressure: {errs[0] * 100}%")
+            self.logger.info(f"Relative error in flowrate: {errs[1] * 100}%")
+
+        return errs[0], errs[1]
 
     def plot(self, idx):
         """
@@ -240,7 +274,6 @@ class MGNRollout:
             idx: Index of the node to plot pressure and flow rate at.
 
         """
-        load = self.graph.ndata["nfeatures"][0, -1, :]
         p_pred_values = []
         q_pred_values = []
         p_exact_values = []
@@ -249,12 +282,20 @@ class MGNRollout:
         bm = self.graph.ndata["branch_mask"].bool()
 
         nsol = self.pred.shape[2]
-        for isol in range(nsol):
-            # if load[isol] == 0:
-            p_pred_values.append(self.pred[bm, 0, isol][idx])
-            q_pred_values.append(self.pred[bm, 1, isol][idx])
-            p_exact_values.append(self.exact[bm, 0, isol][idx])
-            q_exact_values.append(self.exact[bm, 1, isol][idx])
+        if torch.cuda.is_available():
+            for isol in range(nsol):
+                # if load[isol] == 0:
+                p_pred_values.append(self.pred[bm, 0, isol][idx].cpu().detach().numpy())
+                q_pred_values.append(self.pred[bm, 1, isol][idx].cpu().detach().numpy())
+                p_exact_values.append(self.exact[bm, 0, isol][idx].cpu().detach().numpy())
+                q_exact_values.append(self.exact[bm, 1, isol][idx].cpu().detach().numpy())
+        else:
+            for isol in range(nsol):
+                # if load[isol] == 0:
+                p_pred_values.append(self.pred[bm, 0, isol][idx])
+                q_pred_values.append(self.pred[bm, 1, isol][idx])
+                p_exact_values.append(self.exact[bm, 0, isol][idx])
+                q_exact_values.append(self.exact[bm, 1, isol][idx])
 
         plt.figure()
         ax = plt.axes()
@@ -270,10 +311,7 @@ class MGNRollout:
         ax.legend()
         plt.savefig("flowrate.png", bbox_inches="tight")
 
-
-
-@hydra.main(version_base=None, config_path=".", config_name="config")
-def do_rollout(cfg: DictConfig):
+def do_rollout(cfg, logger, model):
     """
     Perform rollout phase.
 
@@ -281,14 +319,22 @@ def do_rollout(cfg: DictConfig):
         cfg: Dictionary containing problem parameters.
 
     """
-    logger = PythonLogger("main")
-    logger.file_logging()
-    logger.info("Rollout started...")
-    rollout = MGNRollout(logger, cfg)
+    rollout = Rollout(logger, cfg, model)
     rollout.predict(cfg.testing.graph)
     rollout.denormalize()
     rollout.compute_errors()
     rollout.plot(idx=5)
+    return rollout
+
+@hydra.main(version_base=None, config_path=".", config_name="config")
+def main(cfg: DictConfig):
+    logger = PythonLogger("main")
+    logger.file_logging()
+    logger.info("Rollout started...")
+    model = load_model(cfg)
+
+    rollout = do_rollout(cfg, logger, model)
+    evaluate_model(cfg, logger, model, rollout.params, rollout.graphs)
 
 
 """
@@ -296,4 +342,4 @@ The main function perform the rollout phase on the geometry specified in
 'config.yaml' (testing.graph) and computes the error.
 """
 if __name__ == "__main__":
-    do_rollout()
+    main()

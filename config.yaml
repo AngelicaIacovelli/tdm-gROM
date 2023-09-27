@@ -19,7 +19,7 @@ scheduler:
 
 training:
   batch_size: 100
-  epochs: 3000
+  epochs: 500
   geometries: "healthy"
   stride: 5
   rate_noise: 100
@@ -46,11 +46,11 @@ architecture:
   hidden_dim_edge_encoder: 64
   hidden_dim_processor: 64
   hidden_dim_node_decoder: 64
-  hidden_dim_l: 25 
-  hidden_dim_h: 25
+  hidden_dim_l: 10 
+  hidden_dim_h: 10
   in_feats: 18
   edge_feats: 9
-  latent_size_gnn: 16
+  latent_size_gnn: 9
   latent_size_mlp: 64
   number_hidden_layers_mlp: 2
   out_size: 2

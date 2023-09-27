@@ -20,6 +20,7 @@ from torch.cuda.amp import GradScaler
 import time, os
 import numpy as np
 import hydra
+from evaluate_model import evaluate_model
 
 from modulus.distributed.manager import DistributedManager
 
@@ -72,6 +73,7 @@ class MGNTrainer:
             "raw_dataset/graphs/", norm_type, cfg.training.geometries, cfg
         )
 
+        self.graphs = graphs
         graph = graphs[list(graphs)[0]]
 
         infeat_nodes = graph.ndata["nfeatures"].shape[1] + 1
@@ -265,9 +267,13 @@ def do_training(cfg: DictConfig):
             loss = trainer.train(graph)
         loss_vector.append(loss.cpu().detach().numpy())  # Append the loss value to the vector
 
+        # ep, eq = evaluate_model(cfg, None, trainer.model, trainer.params,  trainer.graphs,
+        #                         trainer.params["test_split"])
+        # print("Relative error in pressure: ", ep)
+        # print("Relative error in flowrate: ", eq)
+        max_memory_allocated = torch.cuda.max_memory_allocated()
         logger.info(
-            f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}"
-        )
+            f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}, memory allocated: {max_memory_allocated/1024**3:.2f} GB")
 
         # save checkpoint
         save_checkpoint(
