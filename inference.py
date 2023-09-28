@@ -209,6 +209,7 @@ class Rollout:
             invar[inmask, 1] = graph.ndata["nfeatures"][inmask, 1, i + 1]
             # flow rate must be constant in branches
             self.compute_average_branches(graph, invar[:, 1])
+            invar[inmask, 1] = graph.ndata["nfeatures"][inmask, 1, i + 1]
 
             self.pred[:, :, i + 1] = invar[:, 0:2]
 
@@ -286,14 +287,10 @@ class Rollout:
         if torch.cuda.is_available():
             for isol in range(nsol):
                 # if load[isol] == 0:
-                p_pred_values.append(self.pred[bm, 0, isol][idx].cpu().detach().numpy())
-                q_pred_values.append(self.pred[bm, 1, isol][idx].cpu().detach().numpy())
-                p_exact_values.append(
-                    self.exact[bm, 0, isol][idx].cpu().detach().numpy()
-                )
-                q_exact_values.append(
-                    self.exact[bm, 1, isol][idx].cpu().detach().numpy()
-                )
+                p_pred_values.append(self.pred[:, 0, isol][idx].cpu().detach().numpy())
+                q_pred_values.append(self.pred[:, 1, isol][idx].cpu().detach().numpy())
+                p_exact_values.append(self.exact[:, 0, isol][idx].cpu().detach().numpy())
+                q_exact_values.append(self.exact[:, 1, isol][idx].cpu().detach().numpy())
         else:
             for isol in range(nsol):
                 # if load[isol] == 0:
