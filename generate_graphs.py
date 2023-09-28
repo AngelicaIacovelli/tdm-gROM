@@ -135,11 +135,13 @@ def resample_time(field, timesteps, period, shift=0):
     nnodes = field[t0].size
     # allocating space for the initial condition. This is a dictionary where the key
     # is the timestep and the value is the vector of nodal values.
-    resampled_field = {t0 + shift: np.zeros(nnodes)}
+    resampled_field = {} # {t0 + shift: np.zeros(nnodes)}
 
     t = np.linspace(t0, t0 + period, timesteps)
     for t_ in t:
         resampled_field[t_] = np.zeros(nnodes)
+
+    print(len(t))
 
     for inode in range(nnodes):
         values = []
@@ -290,6 +292,7 @@ def add_time_dependent_fields(
 
         new_graph = copy.deepcopy(graph)
         add_field(new_graph, c_pressure, "pressure")
+        print(new_graph.ndata["pressure"].shape)
         add_field(new_graph, c_flowrate, "flowrate")
         graphs.append(new_graph)
 

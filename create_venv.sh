@@ -31,3 +31,5 @@ cd ..
 rm -rf modulus-launch
 
 pip install pydantic==1.10.9
+pip install ray
+pip install optuna

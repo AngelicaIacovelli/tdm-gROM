@@ -110,7 +110,7 @@ class GLSTMCell(Module):
             cfg.architecture.number_hidden_layers_mlp,
         )
         self.output = MLP(
-            cfg.architecture.hidden_dim_h,
+            cfg.architecture.hidden_dim,
             cfg.architecture.out_size,
             cfg.architecture.latent_size_mlp,
             cfg.architecture.number_hidden_layers_mlp,
@@ -118,8 +118,8 @@ class GLSTMCell(Module):
         )
 
         latent_gnn_dim = cfg.architecture.latent_size_gnn
-        hidden_dim_l = cfg.architecture.hidden_dim_l
-        hidden_dim_h = cfg.architecture.hidden_dim_h
+        hidden_dim_l = cfg.architecture.hidden_dim
+        hidden_dim_h = cfg.architecture.hidden_dim
 
         self.W_i = Linear(latent_gnn_dim, hidden_dim_l, bias=True).float()
         self.U_i = Linear(hidden_dim_h, hidden_dim_l, bias=False).float()

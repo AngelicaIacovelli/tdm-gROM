@@ -13,21 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+work_directory: "."
+
 scheduler:
-  lr: 1.E-3
-  lr_decay: 1.E-3
+  lr: 1.E-3 #optimize
+  lr_decay: 1.E-3 #optimize 
 
 training:
-  batch_size: 100
-  epochs: 500
+  batch_size: 100 #optimize
+  epochs: 5
   geometries: "healthy"
-  stride: 5
-  rate_noise: 100
-  rate_noise_features: 1.E-5
   train_test_split: 0.9
-  loss_weight_1st_timestep: 1
-  loss_weight_other_timesteps: 1
-  loss_weight_boundary_nodes: 100
+  loss_weight_boundary_nodes: 1 #optimize
+  output_interval: -1
 
 checkpoints:
   ckpt_path: "checkpoints"
@@ -41,17 +39,11 @@ testing:
   graph: "s0095_0001.21.0.grph"
 
 architecture:
-  processor_size: 5
-  hidden_dim_node_encoder: 64
-  hidden_dim_edge_encoder: 64
-  hidden_dim_processor: 64
-  hidden_dim_node_decoder: 64
-  hidden_dim_l: 10 
-  hidden_dim_h: 10
+  hidden_dim: 11 #optimize
   in_feats: 18
   edge_feats: 9
-  latent_size_gnn: 9
-  latent_size_mlp: 64
-  number_hidden_layers_mlp: 2
+  latent_size_gnn: 9 #optimize
+  latent_size_mlp: 64 #optimize
+  number_hidden_layers_mlp: 2 #optimize
   out_size: 2
-  autoloop_iterations: 1
+  autoloop_iterations: 1 #optimize

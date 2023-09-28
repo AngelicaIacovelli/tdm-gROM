@@ -20,7 +20,7 @@ from torch.cuda.amp import GradScaler
 import time, os
 import numpy as np
 import hydra
-from evaluate_model import evaluate_model
+from inference import evaluate_model
 
 from modulus.distributed.manager import DistributedManager
 
@@ -69,8 +69,9 @@ class MGNTrainer:
         logger.info(f"Using {self.device} device")
 
         norm_type = {"features": "normal", "labels": "normal"}
+
         graphs, params = generate_normalized_graphs(
-            "raw_dataset/graphs/", norm_type, cfg.training.geometries, cfg
+            cfg.work_directory + "/raw_dataset/graphs/", norm_type, cfg.training.geometries, cfg
         )
 
         self.graphs = graphs
@@ -222,6 +223,8 @@ class MGNTrainer:
             new_state[imask, 1] = ns[imask, 1, istride]
             states.append(new_state)
 
+            loss += mse(states[-1][:,0:2], ns[:,:, istride], mask)
+
         self.backward(loss)
 
         return loss
@@ -254,29 +257,33 @@ def do_training(cfg: DictConfig):
     loss_vector = []  # Initialize an empty list to store loss values
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
         for graph in trainer.dataloader:
+            print('hello')
             loss = trainer.train(graph)
         loss_vector.append(
             loss.cpu().detach().numpy()
         )  # Append the loss value to the vector
 
-        # ep, eq = evaluate_model(cfg, None, trainer.model, trainer.params,  trainer.graphs,
-        #                         trainer.params["test_split"])
-        # print("Relative error in pressure: ", ep)
-        # print("Relative error in flowrate: ", eq)
-        max_memory_allocated = torch.cuda.max_memory_allocated()
-        logger.info(
-            f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}, memory allocated: {max_memory_allocated/1024**3:.2f} GB"
-        )
+        if torch.cuda.is_available():
+            max_memory_allocated = torch.cuda.max_memory_allocated()
+            logger.info(
+                f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}, memory allocated: {max_memory_allocated/1024**3:.2f} GB"
+            )
+        else:
+            logger.info(
+                f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}"
+            )
 
-        # save checkpoint
-        save_checkpoint(
-            os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
-            models=trainer.model,
-            optimizer=trainer.optimizer,
-            scheduler=trainer.scheduler,
-            scaler=trainer.scaler,
-            epoch=epoch,
-        )
+        if cfg.training.output_interval != -1 or epoch == 0:
+            if (epoch % cfg.training.output_interval) == 0 or epoch == 0: 
+                # save checkpoint
+                save_checkpoint(
+                    os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
+                    models=trainer.model,
+                    optimizer=trainer.optimizer,
+                    scheduler=trainer.scheduler,
+                    scaler=trainer.scaler,
+                    epoch=epoch,
+                )
         start = time.time()
         trainer.scheduler.step()
 
@@ -300,6 +307,9 @@ def do_training(cfg: DictConfig):
     ax.semilogy(loss_vector, label="loss")
     ax.legend()
     plt.savefig("checkpoints/loss.png", bbox_inches="tight")
+
+    ep, eq = evaluate_model(cfg, logger, trainer.model, trainer.params, trainer.graphs)
+    return (ep + eq) / 2
 
 
 """

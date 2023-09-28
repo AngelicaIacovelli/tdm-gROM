@@ -382,11 +382,11 @@ def generate_normalized_graphs(input_dir, norm_type, geometries, cfg, statistics
 
     for graph in graphs:
         graphs[graph].ndata["h"] = th.zeros(
-            (graphs[graph].number_of_nodes(), cfg.architecture.hidden_dim_h),
+            (graphs[graph].number_of_nodes(), cfg.architecture.hidden_dim),
             dtype=th.float32,
         )
         graphs[graph].ndata["c"] = th.zeros(
-            (graphs[graph].number_of_nodes(), cfg.architecture.hidden_dim_l),
+            (graphs[graph].number_of_nodes(), cfg.architecture.hidden_dim),
             dtype=th.float32,
         )
 
@@ -596,7 +596,7 @@ def train_test_split(graphs, perc):
 if __name__ == "__main__":
     t_params, args = parse_command_line_arguments()
     norm_type = {"features": "normal", "labels": "normal"}
-    graphs, params = generate_normalized_graphs("raw_dataset/graphs/", norm_type)
+    graphs, params = generate_normalized_graphs("./raw_dataset/graphs/", norm_type)
 
     graph = graphs[list(graphs)[0]]
 
