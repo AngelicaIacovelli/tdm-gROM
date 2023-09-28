@@ -100,9 +100,6 @@ class MGNTrainer:
         params["out_size"] = nout
         params["node_features"] = nodes_features
         params["edges_features"] = edges_features
-        params["rate_noise"] = cfg.training.rate_noise
-        params["rate_noise_features"] = cfg.training.rate_noise_features
-        params["stride"] = cfg.training.stride
 
         trainset, testset = train_test_split(graphs, cfg.training.train_test_split)
         params["train_split"] = trainset
@@ -188,7 +185,7 @@ class MGNTrainer:
         graph = graph.to(self.device)
         self.optimizer.zero_grad()
         loss = 0
-        ns = graph.ndata["nfeatures"][:,0:2,1:]
+        ns = graph.ndata["nfeatures"][:, 0:2, 1:]
 
         # create mask to weight boundary nodes more in loss
         mask = torch.ones(ns[:, :, 0].shape, device=self.device)
@@ -201,13 +198,13 @@ class MGNTrainer:
         mask[outmask, 0] = mask[outmask, 0] * bcoeff
         mask[outmask, 1] = mask[outmask, 1] * bcoeff
 
-        states = [graph.ndata["nfeatures"][:,:,0]]
+        states = [graph.ndata["nfeatures"][:, :, 0]]
 
         graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
 
         nnodes = mask.shape[0]
         nf = torch.zeros((nnodes, 1), device=self.device)
-        for istride in range(self.stride-1):
+        for istride in range(self.stride - 1):
             # impose boundary condition
             nf[imask, 0] = ns[imask, 1, istride]
             nfeatures = torch.cat((states[-1], nf), 1)
@@ -224,13 +221,6 @@ class MGNTrainer:
             # impose exact flow rate at the inlet (to remove it from loss)
             new_state[imask, 1] = ns[imask, 1, istride]
             states.append(new_state)
-
-            if istride == 0:
-                coeff = self.cfg.training.loss_weight_1st_timestep
-            else:
-                coeff = self.cfg.training.loss_weight_other_timesteps
-
-            loss += coeff * mse(states[-1][:, 0:2], ns[:, :, istride], mask)
 
         self.backward(loss)
 
@@ -265,7 +255,9 @@ def do_training(cfg: DictConfig):
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
         for graph in trainer.dataloader:
             loss = trainer.train(graph)
-        loss_vector.append(loss.cpu().detach().numpy())  # Append the loss value to the vector
+        loss_vector.append(
+            loss.cpu().detach().numpy()
+        )  # Append the loss value to the vector
 
         # ep, eq = evaluate_model(cfg, None, trainer.model, trainer.params,  trainer.graphs,
         #                         trainer.params["test_split"])
@@ -273,7 +265,8 @@ def do_training(cfg: DictConfig):
         # print("Relative error in flowrate: ", eq)
         max_memory_allocated = torch.cuda.max_memory_allocated()
         logger.info(
-            f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}, memory allocated: {max_memory_allocated/1024**3:.2f} GB")
+            f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}, memory allocated: {max_memory_allocated/1024**3:.2f} GB"
+        )
 
         # save checkpoint
         save_checkpoint(
@@ -318,5 +311,3 @@ def do_training(cfg: DictConfig):
     """
 if __name__ == "__main__":
     do_training()
-
-

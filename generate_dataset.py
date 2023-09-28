@@ -69,7 +69,7 @@ def compute_statistics(graphs, fields, statistics):
                 minv = np.min([minv, th.min(d)])
                 maxv = np.max([maxv, th.max(d)])
                 mean = th.mean(d)
-                meansq = th.mean(d**2)
+                meansq = th.mean(d ** 2)
 
                 means.append(mean)
                 meansqs.append(meansq)
@@ -91,7 +91,7 @@ def compute_statistics(graphs, fields, statistics):
             cur_statistics["min"] = minv
             cur_statistics["max"] = maxv
             cur_statistics["mean"] = mean
-            cur_statistics["stdv"] = np.sqrt(meansq - mean**2)
+            cur_statistics["stdv"] = np.sqrt(meansq - mean ** 2)
             statistics[field_name] = cur_statistics
 
     graph_sts = {"nodes": [], "edges": [], "tsteps": []}

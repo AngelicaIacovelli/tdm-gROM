@@ -130,7 +130,6 @@ def resample_time(field, timesteps, period, shift=0):
 
     t0 = original_timesteps[0]
     T = original_timesteps[-1]
-    timestep = (T - t0) / (timesteps - 1)
 
     t = [t0 + shift]
     nnodes = field[t0].size
@@ -138,9 +137,9 @@ def resample_time(field, timesteps, period, shift=0):
     # is the timestep and the value is the vector of nodal values.
     resampled_field = {t0 + shift: np.zeros(nnodes)}
 
-    while t[-1] < T and t[-1] <= t[0] + period:
-        t.append(t[-1] + timestep)
-        resampled_field[t[-1]] = np.zeros(nnodes)
+    t = np.linspace(t0, t0 + period, timesteps)
+    for t_ in t:
+        resampled_field[t_] = np.zeros(nnodes)
 
     for inode in range(nnodes):
         values = []
@@ -239,11 +238,7 @@ def generate_datastructures(vtp_data, dataset_info, resample_perc):
 
 
 def add_time_dependent_fields(
-    graph,
-    graph_data,
-    do_resample_time=False,
-    timesteps=101,
-    ncopies=1,
+    graph, graph_data, do_resample_time=False, timesteps=101, ncopies=1
 ):
     """
     Add time-dependent data to a graph containing static data. This function
@@ -287,16 +282,10 @@ def add_time_dependent_fields(
             data_augmentation_shift = dt / ncopies * icopy
             actual_shift = data_augmentation_shift + shift
             c_pressure = resample_time(
-                c_pressure,
-                timesteps,
-                period=graph_data["period"],
-                shift=actual_shift,
+                c_pressure, timesteps, period=graph_data["period"], shift=actual_shift
             )
             c_flowrate = resample_time(
-                c_flowrate,
-                timesteps,
-                period=graph_data["period"],
-                shift=actual_shift,
+                c_flowrate, timesteps, period=graph_data["period"], shift=actual_shift
             )
 
         new_graph = copy.deepcopy(graph)
@@ -340,11 +329,7 @@ if __name__ == "__main__":
             )
 
             graphs = add_time_dependent_fields(
-                static_graph,
-                graph_data,
-                do_resample_time=True,
-                timesteps=101,
-                ncopies=4,
+                static_graph, graph_data, do_resample_time=True, timesteps=41, ncopies=4
             )
 
             for i, graph in enumerate(graphs):

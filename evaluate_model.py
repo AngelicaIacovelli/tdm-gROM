@@ -16,6 +16,7 @@
 
 from inference import Rollout
 
+
 def evaluate_model(cfg, logger, model, params, graphs, graph_names):
     rollout = Rollout(logger, cfg, model, params, graphs)
     ep_tot = 0
@@ -26,7 +27,6 @@ def evaluate_model(cfg, logger, model, params, graphs, graph_names):
         ep, eq = rollout.compute_errors()
         ep_tot += ep
         eq_tot += eq
-    ep_tot = ep_tot/len(graph_names)
-    eq_tot = eq_tot/len(graph_names)
+    ep_tot = ep_tot / len(graph_names)
+    eq_tot = eq_tot / len(graph_names)
     return ep_tot, eq_tot
-        

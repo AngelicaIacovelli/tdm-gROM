@@ -44,12 +44,12 @@ def evaluate_model(cfg, logger, model, params, graphs):
         ep, eq = rollout.compute_errors(do_print=False)
         ep_tot += ep
         eq_tot += eq
-    ep_tot = ep_tot/len(testset)
-    eq_tot = eq_tot/len(testset)
+    ep_tot = ep_tot / len(testset)
+    eq_tot = eq_tot / len(testset)
     logger.info(f"Average relative error in pressure: {ep_tot * 100}%")
     logger.info(f"Average relative error in flowrate: {eq_tot * 100}%")
     return ep_tot, eq_tot
-        
+
 
 def denormalize(tensor, mean, stdv):
     """Denormalize a tensor given a mean and a standard deviation.
@@ -64,6 +64,7 @@ def denormalize(tensor, mean, stdv):
         denormalized tensor
     """
     return tensor * stdv + mean
+
 
 def load_model(cfg):
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -93,7 +94,7 @@ def load_model(cfg):
 
 
 class Rollout:
-    def __init__(self, logger, cfg, model, params = None, graphs = None):
+    def __init__(self, logger, cfg, model, params=None, graphs=None):
         """Performs the rollout phase on the geometry specified in
         'config.yaml' (testing.graph) and computes the error"""
 
@@ -107,7 +108,7 @@ class Rollout:
 
         if params == None:
             params = json.load(open("checkpoints/parameters.json"))
-        
+
         if graphs == None:
             norm_type = {"features": "normal", "labels": "normal"}
             graphs, _ = generate_normalized_graphs(
@@ -169,7 +170,7 @@ class Rollout:
             rflowrate = torch.mean(flowrate[idxs])
             flowrate[idxs] = rflowrate
 
-    def predict(self, graph_name, do_print = True):
+    def predict(self, graph_name, do_print=True):
         """
         Perform rollout phase for a single graph in the dataset
 
@@ -245,7 +246,7 @@ class Rollout:
             self.params["statistics"]["flowrate"]["stdv"],
         )
 
-    def compute_errors(self, do_print = True):
+    def compute_errors(self, do_print=True):
         """
         Compute errors in pressure and flow rate. This function must be called
         after 'predict' and 'denormalize'. The errors are computed as l2 errors
@@ -255,7 +256,7 @@ class Rollout:
         bm = torch.reshape(self.graph.ndata["branch_mask"], (-1, 1, 1))
         bm = bm.repeat(1, 2, self.pred.shape[2])
         diff = (self.pred - self.exact) * bm
-        errs = torch.sum(torch.sum(diff**2, axis=0), axis=1)
+        errs = torch.sum(torch.sum(diff ** 2, axis=0), axis=1)
         errs = errs / torch.sum(torch.sum((self.exact * bm) ** 2, axis=0), axis=1)
         errs = torch.sqrt(errs)
 
@@ -287,8 +288,12 @@ class Rollout:
                 # if load[isol] == 0:
                 p_pred_values.append(self.pred[bm, 0, isol][idx].cpu().detach().numpy())
                 q_pred_values.append(self.pred[bm, 1, isol][idx].cpu().detach().numpy())
-                p_exact_values.append(self.exact[bm, 0, isol][idx].cpu().detach().numpy())
-                q_exact_values.append(self.exact[bm, 1, isol][idx].cpu().detach().numpy())
+                p_exact_values.append(
+                    self.exact[bm, 0, isol][idx].cpu().detach().numpy()
+                )
+                q_exact_values.append(
+                    self.exact[bm, 1, isol][idx].cpu().detach().numpy()
+                )
         else:
             for isol in range(nsol):
                 # if load[isol] == 0:
@@ -311,6 +316,7 @@ class Rollout:
         ax.legend()
         plt.savefig("flowrate.png", bbox_inches="tight")
 
+
 def do_rollout(cfg, logger, model):
     """
     Perform rollout phase.
@@ -325,6 +331,7 @@ def do_rollout(cfg, logger, model):
     rollout.compute_errors()
     rollout.plot(idx=5)
     return rollout
+
 
 @hydra.main(version_base=None, config_path=".", config_name="config")
 def main(cfg: DictConfig):

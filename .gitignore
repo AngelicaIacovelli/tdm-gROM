@@ -13,3 +13,4 @@ gpualloc.sh
 core*
 *.swp
 *.png
+download_checkpoints.sh

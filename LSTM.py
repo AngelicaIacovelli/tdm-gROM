@@ -124,7 +124,7 @@ class GLSTMCell(Module):
         self.W_i = Linear(latent_gnn_dim, hidden_dim_l, bias=True).float()
         self.U_i = Linear(hidden_dim_h, hidden_dim_l, bias=False).float()
 
-        self.W_f = Linear(latent_gnn_dim, hidden_dim_l, bias=True).float()
+        self.W_f = Linear(cfg.architecture.edge_feats, hidden_dim_l, bias=True).float()
         self.U_f = Linear(hidden_dim_h, hidden_dim_l, bias=False).float()
 
         self.W_o = Linear(latent_gnn_dim, hidden_dim_l, bias=True).float()
@@ -215,7 +215,7 @@ class GLSTMCell(Module):
     # VECTOR f
 
     def compute_f(self, edges):
-        x = edges.data["proc_edge"]
+        x = edges.data["efeatures"]
         x = x.float()
         Wx = self.W_f(x)
 
@@ -304,11 +304,11 @@ class GLSTMCell(Module):
 
         # ENCODE
         g.apply_nodes(self.encode_nodes)
-        g.apply_edges(self.encode_edges)
+        # g.apply_edges(self.encode_edges)
 
         # PROCESS
 
-        for i in range(self.autoloop_iterations): 
+        for i in range(self.autoloop_iterations):
 
             # Vector i
             g.apply_edges(self.compute_Uih)
