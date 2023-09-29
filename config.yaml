@@ -21,7 +21,7 @@ scheduler:
 
 training:
   batch_size: 100 #optimize
-  epochs: 5
+  epochs: 500
   geometries: "healthy"
   train_test_split: 0.9
   loss_weight_boundary_nodes: 1 #optimize
@@ -47,3 +47,6 @@ architecture:
   number_hidden_layers_mlp: 2 #optimize
   out_size: 2
   autoloop_iterations: 1 #optimize
+
+hyperparameter_optimization:
+  runs: 100

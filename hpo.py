@@ -1,10 +1,16 @@
 import torch
+import ray
 from ray import train, tune
 from ray.tune.search.optuna import OptunaSearch
 import hydra
 from omegaconf import DictConfig
 from train import do_training
 import os
+from modulus.distributed.manager import DistributedManager
+
+# initialize distributed manager
+DistributedManager.initialize()
+dist = DistributedManager()
 
 def objective(config, cfg):  
     cfg.scheduler.lr = config["lr"] 
@@ -17,8 +23,9 @@ def objective(config, cfg):
     cfg.architecture.number_hidden_layers_mlp = config["number_hidden_layers_mlp"]
     cfg.architecture.autoloop_iterations = config["autoloop_iterations"]
 
-    metric = do_training(cfg)
-    train.report({"inference_performance": metric})  # Report to Tune
+    metric = do_training(cfg, dist).cpu().detach().numpy()
+    
+    train.report({"inference_performance": float(metric)})  # Report to Tune
 
 @hydra.main(version_base=None, config_path=".", config_name="config")
 def main(cfg: DictConfig):
@@ -34,7 +41,7 @@ def main(cfg: DictConfig):
         "hidden_dim": tune.randint(1, 64), 
         "latent_size_gnn": tune.randint(1, 64),
         "latent_size_mlp": tune.randint(1, 200),
-        "number_hidden_layers_mlp": tune.randint(1, 50),
+        "number_hidden_layers_mlp": tune.randint(1, 3),
         "autoloop_iterations": tune.randint(1, 3),
 
     }
@@ -43,12 +50,14 @@ def main(cfg: DictConfig):
     def objective_cfg(config):
         return objective(config, cfg)
 
+    objective_with_gpu = tune.with_resources(objective_cfg, {"gpu": 1})
     tuner = tune.Tuner(  
-        objective_cfg,
+        objective_with_gpu,
         tune_config=tune.TuneConfig(
-            metric="inference_performance", mode="min", search_alg=algo
+            metric="inference_performance", mode="min", search_alg=algo,
+            num_samples=cfg.hyperparameter_optimization.runs
         ),
-        run_config=train.RunConfig(stop={"training_iteration": 1}),
+        run_config=train.RunConfig(),
         param_space=search_space,
     )
     results = tuner.fit()

@@ -229,9 +229,11 @@ class MGNTrainer:
 
         return loss
 
-
 @hydra.main(version_base=None, config_path=".", config_name="config")
-def do_training(cfg: DictConfig):
+def read_cfg(cfg: DictConfig):
+    return cfg
+
+def do_training(cfg, dist):
     """
     Perform training over all graphs in the dataset.
 
@@ -239,11 +241,6 @@ def do_training(cfg: DictConfig):
         cfg: Dictionary of parameters.
 
     """
-
-    # initialize distributed manager
-    DistributedManager.initialize()
-    dist = DistributedManager()
-
     # initialize loggers
     logger = PythonLogger("main")
     logger.file_logging()
@@ -257,7 +254,6 @@ def do_training(cfg: DictConfig):
     loss_vector = []  # Initialize an empty list to store loss values
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
         for graph in trainer.dataloader:
-            print('hello')
             loss = trainer.train(graph)
         loss_vector.append(
             loss.cpu().detach().numpy()
@@ -273,7 +269,7 @@ def do_training(cfg: DictConfig):
                 f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}"
             )
 
-        if cfg.training.output_interval != -1 or epoch == 0:
+        if cfg.training.output_interval != -1:
             if (epoch % cfg.training.output_interval) == 0 or epoch == 0: 
                 # save checkpoint
                 save_checkpoint(
@@ -297,8 +293,9 @@ def do_training(cfg: DictConfig):
             print(obj)
             return TypeError("Token is not serializable")
 
-        with open(cfg.checkpoints.ckpt_path + "/parameters.json", "w") as outf:
-            json.dump(trainer.params, outf, default=default, indent=4)
+        if cfg.training.output_interval != -1:
+            with open(cfg.checkpoints.ckpt_path + "/parameters.json", "w") as outf:
+                json.dump(trainer.params, outf, default=default, indent=4)
     logger.info("Training completed!")
 
     # Plot loss_vector
@@ -306,7 +303,7 @@ def do_training(cfg: DictConfig):
     ax = plt.axes()
     ax.semilogy(loss_vector, label="loss")
     ax.legend()
-    plt.savefig("checkpoints/loss.png", bbox_inches="tight")
+    plt.savefig("loss.png", bbox_inches="tight")
 
     ep, eq = evaluate_model(cfg, logger, trainer.model, trainer.params, trainer.graphs)
     return (ep + eq) / 2
@@ -320,4 +317,8 @@ def do_training(cfg: DictConfig):
 
     """
 if __name__ == "__main__":
-    do_training()
+    # initialize distributed manager
+    DistributedManager.initialize()
+    dist = DistributedManager()
+    cfg = read_cfg()
+    do_training(cfg, dist)
