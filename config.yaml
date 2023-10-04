@@ -47,6 +47,8 @@ architecture:
   number_hidden_layers_mlp: 2 #optimize
   out_size: 2
   autoloop_iterations: 1 #optimize
+  process_iterations: 1
+  backward_interval: 5
 
 hyperparameter_optimization:
   runs: 100

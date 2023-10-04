@@ -1,6 +1,7 @@
 import torch
 import ray
 from ray import train, tune
+from ray.train import Checkpoint
 from ray.tune.search.optuna import OptunaSearch
 import hydra
 from omegaconf import DictConfig
@@ -48,18 +49,33 @@ def main(cfg: DictConfig):
     algo = OptunaSearch()  
 
     def objective_cfg(config):
+
         return objective(config, cfg)
 
     objective_with_gpu = tune.with_resources(objective_cfg, {"gpu": 1})
-    tuner = tune.Tuner(  
-        objective_with_gpu,
-        tune_config=tune.TuneConfig(
-            metric="inference_performance", mode="min", search_alg=algo,
-            num_samples=cfg.hyperparameter_optimization.runs
-        ),
-        run_config=train.RunConfig(),
-        param_space=search_space,
-    )
+
+    storage_path = os.path.expanduser("/home/aiacovelli/ray_results")
+    exp_name = "tune_fault_tolerance_guide"
+    path = os.path.join(storage_path, exp_name)
+
+    if tune.Tuner.can_restore(path):
+        tuner = tune.Tuner.restore(
+            path, 
+            trainable = objective_with_gpu, 
+            param_space=search_space,
+            resume_errored=True
+        )
+    else:
+        tuner = tune.Tuner(  
+            trainable = objective_with_gpu,
+            tune_config=tune.TuneConfig(
+                metric="inference_performance", mode="min", search_alg=algo,
+                num_samples=cfg.hyperparameter_optimization.runs
+            ),
+            run_config=train.RunConfig(storage_path=storage_path, name=exp_name),
+            param_space=search_space,
+        )
+    
     results = tuner.fit()
     print("Best config is:", results.get_best_result().config)
 

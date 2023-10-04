@@ -313,6 +313,102 @@ class Rollout:
         ax.legend()
         plt.savefig("flowrate.png", bbox_inches="tight")
 
+    def write_vtk_file(self, graph_name, outfile, outdir=".", vtkcombo=False):
+        """
+        Write vtk files (one per timestep) given a graph and a solution.
+        The file can be opened in Paraview.
+
+        Arguments:
+            graph: A DGL graph.
+            solution: Tuple containing two n x m tensors, where n is the number of
+                    nodes and m the number of timesteps. The first tensor contains
+                    the pressure solution, the second contains
+                    the flow rate solution
+            outfile (string): name of output file. It can be take value "solution" for
+                              the gnn approximation, or "reference" for the ground
+                              truth.
+            outdir (string): directory where results should be stored
+
+        """
+
+        def write(polydata, filename):
+            writer = vtk.vtkXMLPolyDataWriter()
+            writer.SetFileName(os.path.join(outdir, filename))
+            writer.SetInputData(polydata)
+            writer.Write()
+
+        graph = self.graphs[graph_name]
+        ntimesteps = self.pred.shape[2]
+
+        if outdir != "." and not os.path.exists(outdir):
+            os.makedirs(outdir)
+
+        points = graph.ndata["x"].detach().numpy()
+        edges0 = graph.edges()[0].detach().numpy()
+        edges1 = graph.edges()[1].detach().numpy()
+
+        if vtkcombo:
+            polydata = vtk.vtkPolyData()
+            dt = float(graph.ndata["dt"][0, 0])
+
+        for t in range(ntimesteps):
+            types = np.argmax(graph.edata["type"].detach().numpy(), axis=1)
+            p_edges = np.where(types < 2)[0]
+
+            if not vtkcombo:
+                polydata = vtk.vtkPolyData()
+
+            # Add points
+            point_vtk = vtk.vtkPoints()
+            for point in points:
+                point_vtk.InsertNextPoint(point)
+            polydata.SetPoints(point_vtk)
+
+            # Prepare to add lines (cells)
+            lines = vtk.vtkCellArray()
+            for index in p_edges:
+                pt1 = edges0[index]
+                pt2 = edges1[index]
+                lines.InsertNextCell(2)
+                lines.InsertCellPoint(pt1)
+                lines.InsertCellPoint(pt2)
+            polydata.SetLines(lines)
+
+            # Add Point Data
+            pressure_array = vtk.vtkFloatArray()
+            if vtkcombo:
+                pressure_array.SetName(f"pressure__{t * dt:.3f}")
+            else:
+                pressure_array.SetName("pressure")
+            pressure_array.SetNumberOfComponents(1)
+
+            flowrate_array = vtk.vtkFloatArray()
+            if vtkcombo:
+                flowrate_array.SetName(f"flowrate_{t * dt:.3f}")
+            else:
+                flowrate_array.SetName("flowrate")
+            flowrate_array.SetNumberOfComponents(1)
+
+            if outfile == "solution":
+                for i in range(len(points)):
+                    pressure_array.InsertNextValue(self.pred[i, 0, t].item())
+                    flowrate_array.InsertNextValue(self.pred[i, 1, t].item())
+            elif outfile == "reference":
+                for i in range(len(points)):
+                    pressure_array.InsertNextValue(self.exact[i, 0, t].item())
+                    flowrate_array.InsertNextValue(self.exact[i, 1, t].item())
+            else:
+                raise ValueError("Solution type " + outfile + " is unknown.")
+
+            polydata.GetPointData().AddArray(pressure_array)
+            polydata.GetPointData().AddArray(flowrate_array)
+
+            if not vtkcombo:
+                write(polydata, f"{outfile}_{t:04d}.vtp")
+
+        if vtkcombo:
+            write(polydata, f"{outfile}.vtp")
+
 
 def do_rollout(cfg, logger, model):
     """
@@ -327,6 +423,14 @@ def do_rollout(cfg, logger, model):
     rollout.denormalize()
     rollout.compute_errors()
     rollout.plot(idx=5)
+    # change idx to plot pressure and flowrate at a different point
+    rollout.write_vtk_file(
+        cfg.testing.graph, "solution", "simulation_results/", vtkcombo=False
+    )
+    rollout.write_vtk_file(
+        cfg.testing.graph, "reference", "simulation_results/", vtkcombo=False
+    )
+
     return rollout
 
 
