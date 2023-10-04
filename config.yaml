@@ -21,7 +21,7 @@ scheduler:
 
 training:
   batch_size: 100 #optimize
-  epochs: 5
+  epochs: 500
   geometries: "healthy"
   train_test_split: 0.9
   loss_weight_boundary_nodes: 1 #optimize
