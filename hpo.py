@@ -37,13 +37,13 @@ def main(cfg: DictConfig):
     search_space = {
         "lr": tune.loguniform(1e-4, 1e-1),
         "lr_decay": tune.loguniform(1e-3, 1e-1),
-        "batch_size": tune.randint(10, 200), 
+        "batch_size": tune.randint(10, 100), 
         "loss_weight_boundary_nodes": tune.randint(1, 200), 
         "hidden_dim": tune.randint(1, 64), 
         "latent_size_gnn": tune.randint(1, 64),
         "latent_size_mlp": tune.randint(1, 200),
-        "number_hidden_layers_mlp": tune.randint(1, 3),
-        "autoloop_iterations": tune.randint(1, 3),
+        "number_hidden_layers_mlp": tune.randint(1, 4),
+        "autoloop_iterations": tune.randint(1,2),
 
     }
     algo = OptunaSearch()  

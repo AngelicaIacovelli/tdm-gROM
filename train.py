@@ -206,6 +206,14 @@ class MGNTrainer:
         nnodes = mask.shape[0]
         nf = torch.zeros((nnodes, 1), device=self.device)
         for istride in range(self.stride - 1):
+            # if istride < 10:
+            #     print('RAM Used (GB):', psutil.virtual_memory()[3]/1000000000)
+            #     self.optimizer.zero_grad()
+            #     self.optimizer.step()
+            # else:
+            #     fef               
+
+
             # impose boundary condition
             nf[imask, 0] = ns[imask, 1, istride]
             nfeatures = torch.cat((states[-1], nf), 1)
@@ -224,10 +232,68 @@ class MGNTrainer:
             states.append(new_state)
 
             loss += mse(states[-1][:,0:2], ns[:,:, istride], mask)
-
         self.backward(loss)
 
         return loss
+
+    # def train(self, graph):
+    #     """
+    #     Perform one training iteration over one graph. The training is performed
+    #     over multiple timesteps, where the number of timesteps is specified in
+    #     the 'stride' parameter.
+
+    #     Arguments:
+    #         graph: the desired graph.
+
+    #     Returns:
+    #         loss: loss value.
+
+    #     """
+    #     graph = graph.to(self.device)
+    #     self.optimizer.zero_grad()
+    #     loss = 0
+    #     ns = graph.ndata["nfeatures"][:, 0:2, 1:]
+
+    #     # create mask to weight boundary nodes more in loss
+    #     mask = torch.ones(ns[:, :, 0].shape, device=self.device)
+    #     imask = graph.ndata["inlet_mask"].bool()
+    #     outmask = graph.ndata["outlet_mask"].bool()
+
+    #     bcoeff = self.cfg.training.loss_weight_boundary_nodes
+    #     mask[imask, 0] = mask[imask, 0] * bcoeff
+    #     # flow rate is known
+    #     mask[outmask, 0] = mask[outmask, 0] * bcoeff
+    #     mask[outmask, 1] = mask[outmask, 1] * bcoeff
+
+    #     states = [graph.ndata["nfeatures"][:, :, 0]]
+
+    #     graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
+
+    #     nnodes = mask.shape[0]
+    #     nf = torch.zeros((nnodes, 1), device=self.device)
+    #     for istride in range(self.stride - 1):
+    #         # impose boundary condition
+    #         nf[imask, 0] = ns[imask, 1, istride]
+    #         nfeatures = torch.cat((states[-1], nf), 1)
+    #         graph.ndata["nfeatures_w_bcs"] = nfeatures
+    #         pred = self.model(graph)
+
+    #         # print(istride)
+    #         # print(graph.ndata["h"])
+
+    #         # add prediction by MeshGraphNet to current state
+    #         new_state = torch.clone(states[-1])
+    #         new_state[:, 0:2] += pred
+    #         # print("New state: ", new_state[:, 0:2])
+    #         # impose exact flow rate at the inlet (to remove it from loss)
+    #         new_state[imask, 1] = ns[imask, 1, istride]
+    #         states.append(new_state)
+
+    #         loss += mse(states[-1][:,0:2], ns[:,:, istride], mask)
+
+    #     self.backward(loss)
+
+    #     return loss
 
 @hydra.main(version_base=None, config_path=".", config_name="config")
 def read_cfg(cfg: DictConfig):
