@@ -186,10 +186,10 @@ class MGNTrainer:
         """
         graph = graph.to(self.device)
         self.optimizer.zero_grad()
+        self.model.drop_derivatives(graph)
         #loss = 0
         loss = torch.tensor(0.0, device=self.device) 
         ns = graph.ndata["nfeatures"][:, 0:2, start_idx+1:]
-        print("Shape of ns:", ns.shape) 
 
         # create mask to weight boundary nodes more in loss
         
@@ -237,149 +237,6 @@ class MGNTrainer:
 
         return loss
 
-    # def train(self, start_idx, end_idx, cfg, dist):
-    #     """
-    #     Perform one training iteration over one graph. The training is performed
-    #     over multiple timesteps, where the number of timesteps is specified in
-    #     the 'stride' parameter.
-
-    #     Arguments:
-    #         graph: the desired graph.
-
-    #     Returns:
-    #         loss: loss value.
-
-    #     """
-    #     logger = PythonLogger("main")
-    #     logger.file_logging()
-    #     trainer = MGNTrainer(logger, cfg, dist)
-
-    #     total_loss = 0
-    #     for idx in range(start_idx, end_idx):
-    #         #graph = trainer.dataloader[idx].to(self.device)
-    #         batch = next(iter(trainer.dataloader))
-    #         graph = batch.to(self.device)
-    #         self.optimizer.zero_grad()
-    #         loss = 0
-
-    #         graph = graph.to(self.device)
-    #         self.optimizer.zero_grad()
-    #         loss = 0
-    #         ns = graph.ndata["nfeatures"][:, 0:2, 1:]
-
-    #         # create mask to weight boundary nodes more in loss
-    #         mask = torch.ones(ns[:, :, 0].shape, device=self.device)
-    #         imask = graph.ndata["inlet_mask"].bool()
-    #         outmask = graph.ndata["outlet_mask"].bool()
-
-    #         bcoeff = self.cfg.training.loss_weight_boundary_nodes
-    #         mask[imask, 0] = mask[imask, 0] * bcoeff
-    #         # flow rate is known
-    #         mask[outmask, 0] = mask[outmask, 0] * bcoeff
-    #         mask[outmask, 1] = mask[outmask, 1] * bcoeff
-
-    #         states = [graph.ndata["nfeatures"][:, :, 0]]
-
-    #         graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
-
-    #         nnodes = mask.shape[0]
-    #         nf = torch.zeros((nnodes, 1), device=self.device)
-    #         for istride in range(self.stride - 1):
-    #             if istride < 50:
-    #                 print('RAM Used (GB):', psutil.virtual_memory()[3]/1000000000)
-    #                 self.optimizer.zero_grad()
-    #                 self.optimizer.step()
-    #             else:
-    #                 fef               
-
-
-    #             # impose boundary condition
-    #             nf[imask, 0] = ns[imask, 1, istride]
-    #             nfeatures = torch.cat((states[-1], nf), 1)
-    #             graph.ndata["nfeatures_w_bcs"] = nfeatures
-    #             pred = self.model(graph)
-
-    #             # print(istride)
-    #             # print(graph.ndata["h"])
-
-    #             # add prediction by MeshGraphNet to current state
-    #             new_state = torch.clone(states[-1])
-    #             new_state[:, 0:2] += pred
-    #             # print("New state: ", new_state[:, 0:2])
-    #             # impose exact flow rate at the inlet (to remove it from loss)
-    #             new_state[imask, 1] = ns[imask, 1, istride]
-    #             states.append(new_state)
-
-    #             loss += mse(states[-1][:,0:2], ns[:,:, istride], mask)
-
-    #             total_loss += loss.item()
-        
-    #     self.backward(total_loss)
-
-    #     return total_loss
-
-    # def train(self, graph, cfg):
-    #     torch.autograd.set_detect_anomaly(True)
-    #     graph = graph.to(self.device)
-    #     self.optimizer.zero_grad()
-    #     loss = 0
-    #     ns = graph.ndata["nfeatures"][:, 0:2, 1:]
-
-    #     self.model.restart(graph)
-
-    #     # create mask to weight boundary nodes more in loss
-    #     mask = torch.ones(ns[:, :, 0].shape, device=self.device)
-    #     imask = graph.ndata["inlet_mask"].bool()
-    #     outmask = graph.ndata["outlet_mask"].bool()
-
-    #     bcoeff = self.cfg.training.loss_weight_boundary_nodes
-    #     mask[imask, 0] = mask[imask, 0] * bcoeff
-    #     # flow rate is known
-    #     mask[outmask, 0] = mask[outmask, 0] * bcoeff
-    #     mask[outmask, 1] = mask[outmask, 1] * bcoeff
-
-    #     states = [graph.ndata["nfeatures"][:, :, 0]]
-
-    #     graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
-
-    #     nnodes = mask.shape[0]
-    #     nf = torch.zeros((nnodes, 1), device=self.device)
-        
-    #     backward_interval = cfg.architecture.backward_interval  # Adjust this value based on your requirements
-
-    #     loss = [0] * 100
-
-    #     i = 0
-    #     for istride in range(self.stride - 1):
-    #         if istride < 10:
-    #             print('RAM Used (GB):', psutil.virtual_memory()[3]/1000000000)
-    #         else:
-    #             fef  
-                  
-    #         nf[imask, 0] = ns[imask, 1, istride]
-    #         nfeatures = torch.cat((states[-1], nf), 1)
-    #         graph.ndata["nfeatures_w_bcs"] = nfeatures
-    #         pred = self.model(graph)
-
-    #         new_state = torch.clone(states[-1])
-    #         new_state[:, 0:2] += pred
-    #         new_state[imask, 1] = ns[imask, 1, istride]
-    #         states.append(new_state)
-
-    #         loss[i] +=  mse(states[-1][:, 0:2], ns[:, :, istride], mask)
-
-    #         # Perform backward and release memory every 'backward_interval' steps
-    #         if (istride + 1) % backward_interval == 0 or istride == self.stride - 2:
-    #             print('ciao')
-    #             self.backward(loss[i])
-    #             # Release memory
-    #             self.optimizer.zero_grad()
-    #             # loss *= 0
-    #             i += 1
-
-    #     return loss
-
-
 def do_training(cfg, dist):
     """
     Perform training over all graphs in the dataset.
@@ -401,6 +258,7 @@ def do_training(cfg, dist):
     loss_vector = []  # Initialize an empty list to store loss values
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
         for graph in trainer.dataloader:
+            trainer.model.zero_memory(graph)
             for start_idx in range(0, trainer.stride-5, 5):
                 end_idx = start_idx + 5
                 loss = trainer.train(graph, start_idx, end_idx)

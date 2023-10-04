@@ -26,6 +26,7 @@ training:
   train_test_split: 0.9
   loss_weight_boundary_nodes: 1 #optimize
   output_interval: -1
+  backward_interval: 5
 
 checkpoints:
   ckpt_path: "checkpoints"
@@ -48,7 +49,6 @@ architecture:
   out_size: 2
   autoloop_iterations: 1 #optimize
   process_iterations: 1
-  backward_interval: 5
 
 hyperparameter_optimization:
   runs: 100
