@@ -16,16 +16,16 @@
 work_directory: "."
 
 scheduler:
-  lr: 1.E-3 #optimize
-  lr_decay: 1.E-3 #optimize 
+  lr: 0.000467844 #optimize
+  lr_decay: 0.0213251 #optimize 
 
 training:
-  batch_size: 100 #optimize
+  batch_size: 14 #optimize
   epochs: 500
   geometries: "healthy"
   train_test_split: 0.9
-  loss_weight_boundary_nodes: 1 #optimize
-  output_interval: -1
+  loss_weight_boundary_nodes: 34 #optimize
+  output_interval: 10
 
 checkpoints:
   ckpt_path: "checkpoints"
@@ -39,12 +39,12 @@ testing:
   graph: "s0095_0001.21.0.grph"
 
 architecture:
-  hidden_dim: 11 #optimize
+  hidden_dim: 51 #optimize
   in_feats: 18
   edge_feats: 9
-  latent_size_gnn: 9 #optimize
-  latent_size_mlp: 64 #optimize
-  number_hidden_layers_mlp: 2 #optimize
+  latent_size_gnn: 18 #optimize
+  latent_size_mlp: 173 #optimize
+  number_hidden_layers_mlp: 3 #optimize
   out_size: 2
   autoloop_iterations: 1 #optimize
 

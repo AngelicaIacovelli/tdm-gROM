@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name="hpo.py"
-#SBATCH --output="train.%j.%N.out"
+#SBATCH --output="hpo.%j.%N.out"
 #SBATCH --partition=gpu-shared
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --account=TG-MDE220007
 #SBATCH --mem=32G
-#SBATCH -t 2:00:00
+#SBATCH -t 48:00:00
 
 module purge
 module load slurm

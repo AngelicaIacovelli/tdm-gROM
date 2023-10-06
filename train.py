@@ -375,16 +375,14 @@ def do_training(cfg, dist):
     return (ep + eq) / 2
 
 
-"""
-    Perform training over all graphs in the dataset.
 
-    Arguments:
-        cfg: Dictionary of parameters.
 
-    """
-if __name__ == "__main__":
+@hydra.main(version_base=None, config_path=".", config_name="config")
+def main(cfg: DictConfig):
     # initialize distributed manager
     DistributedManager.initialize()
     dist = DistributedManager()
-    cfg = read_cfg()
     do_training(cfg, dist)
+
+if __name__ == "__main__":
+    main()
