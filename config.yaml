@@ -21,11 +21,11 @@ scheduler:
 
 training:
   batch_size: 14 #optimize
-  epochs: 500
+  epochs: 2000
   geometries: "healthy"
   train_test_split: 0.9
   loss_weight_boundary_nodes: 34 #optimize
-  output_interval: 10
+  output_interval: 50
 
 checkpoints:
   ckpt_path: "checkpoints"
