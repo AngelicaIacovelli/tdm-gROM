@@ -42,18 +42,19 @@ from modulus.launch.logging import (
 from modulus.launch.utils import load_checkpoint, save_checkpoint
 import json
 from omegaconf import DictConfig
+
 import uuid
 import os
 from torch.autograd import Function
 
 class SelfDeletingTempFile():
     def __init__(self):
-        self.name = f"gradients/temp_file_{uuid.uuid4()}"
+        self.name = f"temp_file_{uuid.uuid4()}"
     
     def __del__(self):
         os.remove(self.name)
 
-SAVE_ON_DISK_THRESHOLD = 50000000000
+SAVE_ON_DISK_THRESHOLD = 5000
 def pack_hook(tensor):
     if tensor.numel() < SAVE_ON_DISK_THRESHOLD:
         return tensor
@@ -176,6 +177,10 @@ class MGNTrainer:
         self.params = params
         self.cfg = cfg
 
+         # Set up hooks for autograd saved tensors
+        self.saved_tensors_hooks = torch.autograd.graph.saved_tensors_hooks(pack_hook, unpack_hook)
+
+
     def backward(self, loss):
         """
         Perform backward pass.
@@ -186,14 +191,14 @@ class MGNTrainer:
         """
         # backward pass
         if self.cfg.performance.amp:
-            self.scaler.scale(loss).backward()
+            self.scaler.scale(loss).backward(retain_graph= True)
             self.scaler.step(self.optimizer)
             self.scaler.update()
         else:
-            loss.backward()
+            loss.backward(retain_graph= True)
             self.optimizer.step()
 
-    def train(self, graph):
+    def train(self, graph, start_idx, end_idx):
         """
         Perform one training iteration over one graph. The training is performed
         over multiple timesteps, where the number of timesteps is specified in
@@ -208,11 +213,13 @@ class MGNTrainer:
         """
         graph = graph.to(self.device)
         self.optimizer.zero_grad()
-        self.model.zero_memory(graph)
-        loss = 0
-        ns = graph.ndata["nfeatures"][:, 0:2, 1:]
+        self.model.drop_derivatives(graph)
+        #loss = 0
+        loss = torch.tensor(0.0, device=self.device) 
+        ns = graph.ndata["nfeatures"][:, 0:2, start_idx+1:]
 
         # create mask to weight boundary nodes more in loss
+        
         mask = torch.ones(ns[:, :, 0].shape, device=self.device)
         imask = graph.ndata["inlet_mask"].bool()
         outmask = graph.ndata["outlet_mask"].bool()
@@ -223,15 +230,18 @@ class MGNTrainer:
         mask[outmask, 0] = mask[outmask, 0] * bcoeff
         mask[outmask, 1] = mask[outmask, 1] * bcoeff
 
-        states = [graph.ndata["nfeatures"][:, :, 0]]
+        states = [graph.ndata["nfeatures"][:, :, start_idx]]
 
         graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
 
         nnodes = mask.shape[0]
         nf = torch.zeros((nnodes, 1), device=self.device)
-        for istride in range(self.stride - 1):
-            with torch.autograd.graph.saved_tensors_hooks(pack_hook, unpack_hook): 
 
+        for istride in range(0, 5):
+            with torch.autograd.graph.saved_tensors_hooks(pack_hook, unpack_hook):
+                print('RAM Used (GB):', psutil.virtual_memory()[3]/1000000000)
+                # self.optimizer.zero_grad()
+                # self.optimizer.step()
                 # impose boundary condition
                 nf[imask, 0] = ns[imask, 1, istride]
                 nfeatures = torch.cat((states[-1], nf), 1)
@@ -249,14 +259,11 @@ class MGNTrainer:
                 new_state[imask, 1] = ns[imask, 1, istride]
                 states.append(new_state)
 
-                loss += mse(states[-1][:,0:2], ns[:,:, istride], mask)
+                loss += mse(states[-1][:, 0:2], ns[:, :, istride], mask)
+
         self.backward(loss)
 
         return loss
-
-@hydra.main(version_base=None, config_path=".", config_name="config")
-def read_cfg(cfg: DictConfig):
-    return cfg
 
 def do_training(cfg, dist):
     """
@@ -279,19 +286,21 @@ def do_training(cfg, dist):
     loss_vector = []  # Initialize an empty list to store loss values
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
         for graph in trainer.dataloader:
-            loss = trainer.train(graph)
-        loss_vector.append(
-            loss.cpu().detach().numpy()
-        )  # Append the loss value to the vector
+            trainer.model.zero_memory(graph)
+            for start_idx in range(0, trainer.stride-5, 5):
+                end_idx = start_idx + 5
+                loss = trainer.train(graph, start_idx, end_idx)
+                loss_vector.append(loss.cpu().detach().numpy())
 
         if torch.cuda.is_available():
             max_memory_allocated = torch.cuda.max_memory_allocated()
+            logger.info(
+                f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}, memory allocated: {max_memory_allocated/1024**3:.2f} GB"
+            )
         else:
-            max_memory_allocated = psutil.virtual_memory()[3]
-
-        logger.info(
-            f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}, memory allocated: {max_memory_allocated/1024**3:.2f} GB"
-        )
+            logger.info(
+                f"epoch: {epoch}, loss: {loss:10.3e}, time per epoch: {(time.time()-start):10.3e}"
+            )
 
         if cfg.training.output_interval != -1:
             if (epoch % cfg.training.output_interval) == 0 or epoch == 0: 
@@ -332,9 +341,6 @@ def do_training(cfg, dist):
     ep, eq = evaluate_model(cfg, logger, trainer.model, trainer.params, trainer.graphs)
     return (ep + eq) / 2
 
-
-
-
 @hydra.main(version_base=None, config_path=".", config_name="config")
 def main(cfg: DictConfig):
     # initialize distributed manager
@@ -342,5 +348,12 @@ def main(cfg: DictConfig):
     dist = DistributedManager()
     do_training(cfg, dist)
 
+"""
+    Perform training over all graphs in the dataset.
+
+    Arguments:
+        cfg: Dictionary of parameters.
+
+    """
 if __name__ == "__main__":
     main()
