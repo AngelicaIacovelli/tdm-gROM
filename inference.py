@@ -88,6 +88,7 @@ def load_model(cfg):
         models=model,
         device=device,
         scaler=scaler,
+        #epoch = 750
     )
 
     return model

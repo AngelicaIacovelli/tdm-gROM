@@ -14,6 +14,7 @@ DistributedManager.initialize()
 dist = DistributedManager()
 
 def objective(config, cfg):  
+    cfg.checkpoints.ckpt_path = os.getcwd() + "/" + cfg.checkpoints.ckpt_path
     cfg.scheduler.lr = config["lr"] 
     cfg.scheduler.lr_decay = config["lr_decay"]
     cfg.training.batch_size = config["batch_size"]
@@ -30,10 +31,8 @@ def objective(config, cfg):
 
 @hydra.main(version_base=None, config_path=".", config_name="config")
 def main(cfg: DictConfig):
-
     cfg.work_directory = os.getcwd()
-    cfg.checkpoints.ckpt_path = os.getcwd() + "/" + cfg.checkpoints.ckpt_path
-
+    cfg.training.output_interval = cfg.training.epochs - 1 
     search_space = {
         "lr": tune.loguniform(1e-4, 1e-1),
         "lr_decay": tune.loguniform(1e-3, 1e-1),
