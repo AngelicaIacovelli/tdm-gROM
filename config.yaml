@@ -25,7 +25,7 @@ training:
   geometries: "healthy"
   train_test_split: 0.9
   loss_weight_boundary_nodes: 1 #optimize
-  output_interval: -1
+  output_interval: 50
   backward_interval: 5
 
 checkpoints:

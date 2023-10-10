@@ -603,13 +603,16 @@ class GLSTMCell(Module):
         return {"h": h}
     
     def zero_memory(self, g):
+        device = g.ndata["h"].get_device()
         g.ndata["h"] = th.zeros(
             (g.number_of_nodes(), self.hidden_dim),
             dtype=th.float32,
+            device=device,
         )
         g.ndata["c"] = th.zeros(
             (g.number_of_nodes(), self.hidden_dim),
             dtype=th.float32,
+            device=device,
         )
 
     def drop_derivatives(self, g):
