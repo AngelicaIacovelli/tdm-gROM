@@ -379,15 +379,17 @@ class GLSTMCell(Module):
         self.processor_edges = th.nn.ModuleList()
         self.process_iters = cfg.architecture.process_iterations
         for i in range(self.process_iters):
-            def generate_proc_MLP(in_feat):
+            def generate_proc_MLP(in_feat, out_feat):
                 return MLP(in_feat,
-                           cfg.architecture.latent_size_gnn,
+                           out_feat,
                            cfg.architecture.latent_size_mlp,
                            cfg.architecture.number_hidden_layers_mlp)
 
             lsgnn = cfg.architecture.latent_size_gnn
-            self.processor_nodes.append(generate_proc_MLP(lsgnn * 2))
-            self.processor_edges.append(generate_proc_MLP(lsgnn * 3))
+            self.processor_nodes.append(generate_proc_MLP(lsgnn + cfg.architecture.edge_feats,
+                                        cfg.architecture.latent_size_gnn))
+            self.processor_edges.append(generate_proc_MLP(lsgnn * 2 + cfg.architecture.edge_feats,
+                                        cfg.architecture.edge_feats))
 
         latent_gnn_dim = cfg.architecture.latent_size_gnn
         hidden_dim_l = cfg.architecture.hidden_dim
@@ -468,6 +470,7 @@ class GLSTMCell(Module):
         f1 = edges.data['proc_edge']
         f2 = edges.src['proc_node']
         f3 = edges.dst['proc_node']
+
         proc_edge = self.processor_edges[index](th.cat((f1, f2, f3), 1))
         # add residual connection
         proc_edge = proc_edge + f1

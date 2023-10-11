@@ -51,4 +51,4 @@ architecture:
   process_iterations: 1
 
 hyperparameter_optimization:
-  runs: 100
+  runs: 1
