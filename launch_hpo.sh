@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --account=TG-MDE220007
 #SBATCH --mem=32G
-#SBATCH -t 24:00:00
+#SBATCH -t 48:00:00
 
 module purge
 module load slurm

@@ -554,7 +554,7 @@ class Bloodflow1DDataset(DGLDataset):
         return "Dataset = " + ", ".join(self.graph_names)
 
 
-def train_test_split(graphs, perc):
+def old_train_test_split(graphs, perc):
     """
     Create two list of graphs, a train one and a test one, from a global
     dictionary. Graphs are organized to avoid data leaks (i.e., augmented
@@ -591,6 +591,35 @@ def train_test_split(graphs, perc):
                 testset.append(name + ".{:}.grph".format(j))
 
     return trainset, testset
+
+
+def train_test_split(graphs, perc):
+    nameset = set()
+    for name in graphs:
+        simname = name.split(".")[0] + "." + name.split(".")[1]
+        nameset.add(simname)
+
+    namelist = list(nameset)
+    random.seed(22)
+    random.shuffle(namelist)  # Shuffle the list randomly
+
+    ntrain = int(perc * len(namelist))
+
+    ncopies = int(len(graphs) / len(namelist))
+
+    trainset = []
+    testset = []
+    for i, name in enumerate(namelist):
+        for j in range(ncopies):
+            if i < ntrain:
+                trainset.append(name + ".{:}.grph".format(j))
+            else:
+                testset.append(name + ".{:}.grph".format(j))
+
+    print("Trainset: ", trainset)
+    print("Testset: ", testset)
+    return trainset, testset
+
 
 
 if __name__ == "__main__":

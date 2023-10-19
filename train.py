@@ -294,7 +294,7 @@ def do_training(cfg, dist):
         )
 
         if cfg.training.output_interval != -1:
-            if (epoch % cfg.training.output_interval) == 0 or epoch == 0: 
+            if (epoch % cfg.training.output_interval) == 0 or epoch == 0 or epoch == cfg.training.epochs: 
                 # save checkpoint
                 save_checkpoint(
                     os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),

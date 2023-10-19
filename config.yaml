@@ -16,15 +16,15 @@
 work_directory: "."
 
 scheduler:
-  lr: 1.E-3 #optimize
-  lr_decay: 1.E-3 #optimize 
+  lr: 0.00043727270420871694 #optimize
+  lr_decay: 0.028826399523639707 #optimize 
 
 training:
-  batch_size: 10 #optimize
+  batch_size: 29 #optimize
   epochs: 500
   geometries: "healthy"
   train_test_split: 0.9
-  loss_weight_boundary_nodes: 1 #optimize
+  loss_weight_boundary_nodes: 37 #optimize
   output_interval: 50
   backward_interval: 5
 
@@ -40,15 +40,15 @@ testing:
   graph: "s0095_0001.21.0.grph"
 
 architecture:
-  hidden_dim: 11 #optimize
+  hidden_dim: 58 #optimize
   in_feats: 18
   edge_feats: 9
-  latent_size_gnn: 9 #optimize
-  latent_size_mlp: 64 #optimize
+  latent_size_gnn: 26 #optimize
+  latent_size_mlp: 134 #optimize
   number_hidden_layers_mlp: 2 #optimize
   out_size: 2
   autoloop_iterations: 1 #optimize
   process_iterations: 1
 
 hyperparameter_optimization:
-  runs: 1
+  runs: 100
