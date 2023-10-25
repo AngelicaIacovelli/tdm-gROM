@@ -24,7 +24,9 @@ import vtk_tools as vtkt
 import graph_tools as grpt
 import scipy
 import torch as th
+from dgl import NodeShuffle
 
+dgl.seed(11)
 
 def add_field(graph, field, field_name, offset=0):
     """
@@ -141,7 +143,7 @@ def resample_time(field, timesteps, period, shift=0):
     for t_ in t:
         resampled_field[t_] = np.zeros(nnodes)
 
-    print(len(t))
+    #print(len(t))
 
     for inode in range(nnodes):
         values = []
@@ -292,9 +294,13 @@ def add_time_dependent_fields(
 
         new_graph = copy.deepcopy(graph)
         add_field(new_graph, c_pressure, "pressure")
-        print(new_graph.ndata["pressure"].shape)
+        #print(new_graph.ndata["pressure"].shape)
         add_field(new_graph, c_flowrate, "flowrate")
         graphs.append(new_graph)
+
+        # Create a shuffled version of the graph
+        shuffled_graph = NodeShuffle()(new_graph)
+        graphs.append(shuffled_graph)
 
     return graphs
 
@@ -331,6 +337,7 @@ if __name__ == "__main__":
                 rcr_values=dataset_info[fname],
             )
 
+            # Create shuffled and original graphs
             graphs = add_time_dependent_fields(
                 static_graph, graph_data, do_resample_time=True, timesteps=41, ncopies=4
             )

@@ -31,6 +31,7 @@ import json
 import time
 import copy
 from tqdm import tqdm
+import vtk
 
 
 def evaluate_model(cfg, logger, model, params, graphs):
@@ -265,7 +266,7 @@ class Rollout:
             self.logger.info(f"Relative error in pressure: {errs[0] * 100}%")
             self.logger.info(f"Relative error in flowrate: {errs[1] * 100}%")
 
-        return errs[0], errs[1]
+        return errs[0].detach(), errs[1].detach()
 
     def plot(self, idx):
         """

@@ -13,7 +13,8 @@ source $VENVNAME/bin/activate
 # # requirements:
 pip install numpy
 pip install packaging
-pip install dgl-cu110
+pip install  dgl -f https://data.dgl.ai/wheels/cu118/repo.html
+pip install  dglgo -f https://data.dgl.ai/wheels-test/repo.html
 pip install torch
 pip install vtk
 git install hydra

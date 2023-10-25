@@ -8,6 +8,7 @@ __pycache__/
 outputs
 checkpoints
 launch.sh
+launch_hpo.sh
 gpualloc.sh
 *.out
 core*
