@@ -17,6 +17,9 @@ import torch as th
 import numpy as np
 import scipy
 import dgl
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def generate_types(bif_id, indices):
@@ -420,7 +423,7 @@ def generate_tangents(points, branch_id):
     return tangents
 
 
-def generate_graph(point_data, points, edges1, edges2, add_boundary_edges, rcr_values):
+def generate_graph(point_data, points, edges1, edges2, add_boundary_edges, rcr_values, debug = False):
     """
     Generate graph.
 
@@ -529,6 +532,7 @@ def generate_graph(point_data, points, edges1, edges2, add_boundary_edges, rcr_v
         types[:, 0].detach().numpy() == 1, dtype=th.int8
     )
     graph.ndata["branch_id"] = th.tensor(point_data["BranchId"], dtype=th.int8)
+    graph.ndata["bifurcation_id"] = th.tensor(point_data["BifurcationId"], dtype=th.int8)
 
     graph.ndata["resistance1"] = th.reshape(
         th.tensor(rcr[:, 0], dtype=th.float32), (-1, 1, 1)
@@ -548,5 +552,34 @@ def generate_graph(point_data, points, edges1, edges2, add_boundary_edges, rcr_v
     )
     etypes = th.nn.functional.one_hot(th.tensor(etypes), num_classes=5)
     graph.edata["type"] = th.unsqueeze(etypes, 2)
+
+    if debug:
+        # Dati dei punti 3D
+        x = graph.ndata["x"][:,0]
+        y = graph.ndata["x"][:,1]
+        z = graph.ndata["x"][:,2]
+
+        # ID dei nodi
+        branch_id = graph.ndata["branch_id"]
+        bifurcation_id = graph.ndata["bifurcation_id"]
+
+        # Crea una figura 3D
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        # Plotta i punti colorati in base all'ID dei nodi
+        scatter = ax.scatter(x, y, z, c=branch_id, cmap='viridis')
+
+        # Aggiungi una barra dei colori
+        cbar = plt.colorbar(scatter)
+        cbar.set_label('Branch ID')
+
+        # Etichette degli assi
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+
+        # Mostra il grafico
+        plt.show()
 
     return graph
