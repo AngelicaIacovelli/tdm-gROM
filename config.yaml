@@ -41,7 +41,7 @@ testing:
 
 architecture:
   hidden_dim: 58 #optimize
-  in_feats: 18
+  in_feats: 17 #put 18 for LSTM and 17 for TRANSFORMER
   edge_feats: 9
   latent_size_gnn: 26 #optimize
   latent_size_mlp: 134 #optimize
@@ -49,6 +49,7 @@ architecture:
   out_size: 2
   autoloop_iterations: 1 #optimize
   process_iterations: 1
+  latent_size_TRANSFORMER: 10
 
 hyperparameter_optimization:
   runs: 100

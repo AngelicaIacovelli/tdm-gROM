@@ -630,13 +630,12 @@ def generate_graph(point_data, points, edges1, edges2, add_boundary_edges, rcr_v
         pivotal_node_ids = th.nonzero(pivotalnodes_list).view(-1)
 
          
-        # Il nodo non è un nodo pivot, calcoliamo lo shortest path
         for j in range(num_pivotal_nodes):
             index = pivotal_node_ids[j].item()
             distances, _ = dijkstra_algorithm(points, edges1_no_bcs, edges2_no_bcs, index)
             shortest_paths[:, j] = th.tensor(distances)
 
         # Aggiungiamo la feature "shortest_path" al grafo
-        graph.ndata["shortest_path"] = shortest_paths
+        graph.ndata["pivotal_weights"] = shortest_paths**(-2)
         
     return graph
