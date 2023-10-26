@@ -335,6 +335,7 @@ if __name__ == "__main__":
                 graph_data["edges2"],
                 add_boundary_edges=True,
                 rcr_values=dataset_info[fname],
+                debug=True
             )
 
             # Create shuffled and original graphs
