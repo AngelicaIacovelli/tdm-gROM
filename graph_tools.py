@@ -423,7 +423,7 @@ def generate_tangents(points, branch_id):
     return tangents
 
 
-def generate_graph(point_data, points, edges1, edges2, add_boundary_edges, rcr_values, debug = False):
+def generate_graph(point_data, points, edges1, edges2, add_boundary_edges, rcr_values, debug = False, pivotalnodes= True):
     """
     Generate graph.
 
@@ -582,4 +582,35 @@ def generate_graph(point_data, points, edges1, edges2, add_boundary_edges, rcr_v
         # Mostra il grafico
         plt.show()
 
+
+    if pivotalnodes:
+
+        pivotalnodes_list = [1]  # Inizializza con 1 per il primo nodo
+
+        # Inizializziamo il valore del branch_id del primo nodo
+        prev_branch_id = graph.ndata["branch_id"][0]
+
+        # Itera sui nodi del grafo (escludendo il primo nodo)
+        for node_id in range(1, graph.ndata["branch_id"].shape[0]-1):
+            current_branch_id = graph.ndata["branch_id"][node_id]
+
+            # Verifica se il branch_id del nodo corrente è diverso da quello del nodo precedente
+            if current_branch_id != prev_branch_id:
+                pivotalnodes_list.pop()
+                pivotalnodes_list.append(1)
+                pivotalnodes_list.append(1)
+            else:
+                pivotalnodes_list.append(0)
+
+            # Aggiorna il branch_id del nodo precedente
+            prev_branch_id = current_branch_id
+
+        # Aggiungi un valore 1 alla fine per l'ultimo nodo
+        pivotalnodes_list.append(1)
+        
+        graph.ndata["pivotal_nodes"] = th.tensor(pivotalnodes_list)
+
+        # Ora 'pivotalnodes_list' contiene una lista di 0 e 1 che indica i nodi pivot, con 1 sia per il primo che per l'ultimo nodo.
+        # graph.ndata["shortet"]
+        
     return graph
