@@ -502,6 +502,9 @@ def generate_graph(point_data, points, edges1, edges2, add_boundary_edges, rcr_v
         if types[edges1[iedge], 1] == 1 or types[edges2[iedge], 1] == 1:
             etypes[iedge] = 1
 
+    edges1_no_bcs = edges1
+    edges2_no_bcs = edges2
+
     if add_boundary_edges:
         bedges1, bedges2, brel_position, bdistance, btypes = generate_boundary_edges(
             points, indices, edges1, edges2
@@ -609,8 +612,31 @@ def generate_graph(point_data, points, edges1, edges2, add_boundary_edges, rcr_v
         pivotalnodes_list.append(1)
         
         graph.ndata["pivotal_nodes"] = th.tensor(pivotalnodes_list)
-
         # Ora 'pivotalnodes_list' contiene una lista di 0 e 1 che indica i nodi pivot, con 1 sia per il primo che per l'ultimo nodo.
-        # graph.ndata["shortet"]
+        
+        
+        # Shortest path calculation 
+
+        num_nodes = graph.ndata["branch_id"].shape[0]
+
+        pivotalnodes_list = np.array(pivotalnodes_list)
+        num_pivotal_nodes = int(pivotalnodes_list.sum())
+
+        # Creiamo una matrice per memorizzare i risultati
+        shortest_paths = th.zeros((num_nodes, num_pivotal_nodes))
+
+        # Otteniamo gli ID dei nodi pivot
+        pivotalnodes_list = th.tensor(pivotalnodes_list, dtype=th.int8)
+        pivotal_node_ids = th.nonzero(pivotalnodes_list).view(-1)
+
+         
+        # Il nodo non è un nodo pivot, calcoliamo lo shortest path
+        for j in range(num_pivotal_nodes):
+            index = pivotal_node_ids[j].item()
+            distances, _ = dijkstra_algorithm(points, edges1_no_bcs, edges2_no_bcs, index)
+            shortest_paths[:, j] = th.tensor(distances)
+
+        # Aggiungiamo la feature "shortest_path" al grafo
+        graph.ndata["shortest_path"] = shortest_paths
         
     return graph

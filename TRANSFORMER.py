@@ -489,6 +489,7 @@ class GLSTMCell(Module):
         proc_node = proc_node + f1
         return {'proc_node': proc_node}
         
+    
     def graph_reduction(self, g):
         """
         Forward step
@@ -528,6 +529,7 @@ class GLSTMCell(Module):
         return z
     
     
+    
     def graph_recovery(self, g, z):
-
+        return 
 
