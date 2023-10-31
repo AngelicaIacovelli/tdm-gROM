@@ -101,7 +101,7 @@ class TRANSFORMERCell(Module):
             cfg.architecture.number_hidden_layers_mlp,
         )
         self.decoder_nodes_reduction= MLP(
-            cfg.architecture.hidden_dim,
+            cfg.architecture.latent_size_gnn,
             cfg.architecture.latent_size_TRANSFORMER,
             cfg.architecture.latent_size_mlp,
             cfg.architecture.number_hidden_layers_mlp,
@@ -120,7 +120,7 @@ class TRANSFORMERCell(Module):
             cfg.architecture.number_hidden_layers_mlp,
         )
         self.decoder_nodes_recovery = MLP(
-            cfg.architecture.hidden_dim,
+            cfg.architecture.latent_size_TRANSFORMER,
             cfg.architecture.out_size,
             cfg.architecture.latent_size_mlp,
             cfg.architecture.number_hidden_layers_mlp,
@@ -149,12 +149,12 @@ class TRANSFORMERCell(Module):
             self.processor_nodes_reduction.append(generate_proc_MLP(lsgnn * 2,
                                         cfg.architecture.latent_size_gnn))
             self.processor_edges_reduction.append(generate_proc_MLP(lsgnn * 3,
-                                        cfg.architecture.edge_feats))
+                                        lsgnn))
             
             self.processor_nodes_recovery.append(generate_proc_MLP(lsgnn * 2,
                                         cfg.architecture.latent_size_gnn))
             self.processor_edges_recovery.append(generate_proc_MLP(lsgnn * 3,
-                                        cfg.architecture.edge_feats))
+                                        lsgnn))
 
         latent_gnn_dim = cfg.architecture.latent_size_gnn
         hidden_dim_l = cfg.architecture.hidden_dim
@@ -248,7 +248,7 @@ class TRANSFORMERCell(Module):
             dictionary (key: 'pred_labels', value: decoded features)
 
         """
-        h = self.decode_nodes_recovery(nodes.data["h"])
+        h = self.decoder_nodes_recovery(nodes.data["h"])
         return {"h": h}
     
     
@@ -269,6 +269,8 @@ class TRANSFORMERCell(Module):
         f3 = edges.dst['proc_node']
 
         proc_edge = self.processor_edges_reduction[index](th.cat((f1, f2, f3), 1))
+        print(f1.shape)
+        print(proc_edge.shape)
         # add residual connection
         proc_edge = proc_edge + f1
         return {'proc_edge': proc_edge}
@@ -295,7 +297,7 @@ class TRANSFORMERCell(Module):
         proc_edge = proc_edge + f1
         return {'proc_edge': proc_edge}
 
-    def process_nodes(self, nodes, index):
+    def process_nodes_reduction(self, nodes, index):
         """
         Process graph nodes
 
@@ -309,7 +311,26 @@ class TRANSFORMERCell(Module):
         """
         f1 = nodes.data['proc_node']
         f2 = nodes.data['pe_sum']
-        proc_node = self.processor_nodes[index](th.cat((f1, f2), 1))
+        proc_node = self.processor_nodes_reduction[index](th.cat((f1, f2), 1))
+        # add residual connection
+        proc_node = proc_node + f1
+        return {'proc_node': proc_node}
+
+    def process_nodes_recovery(self, nodes, index):
+        """
+        Process graph nodes
+
+        Arguments:
+            nodes: graph nodes
+            index: iteration index
+
+        Returns:
+            dictionary (key: 'proc_node', value: processed features)
+
+        """
+        f1 = nodes.data['proc_node']
+        f2 = nodes.data['pe_sum']
+        proc_node = self.processor_nodes_recovery[index](th.cat((f1, f2), 1))
         # add residual connection
         proc_node = proc_node + f1
         return {'proc_node': proc_node}
@@ -347,9 +368,9 @@ class TRANSFORMERCell(Module):
    
         for index in range(self.process_iters):
             def process_edges_reduction(edges):
-                return self.processor_edges_reduction(edges, index)
+                return self.process_edges_reduction(edges, index)
             def process_nodes_reduction(nodes):
-                return self.processor_nodes_reduction(nodes, index)
+                return self.process_nodes_reduction(nodes, index)
             # compute junction-branch interactions
             g.apply_edges(process_edges_reduction)
             g.update_all(fn.copy_e('proc_edge', 'm'), 
@@ -360,7 +381,7 @@ class TRANSFORMERCell(Module):
         # DECODE
         g.apply_nodes(self.decode_nodes_reduction)
         
-        z = th.reshape(g.ndata["h"][g.ndata["pivotal_nodes"],:],(-1,))
+        z = th.reshape(g.ndata["h"][g.ndata["pivotal_nodes"].bool(),:],(-1,))
         return z
     
     
@@ -368,10 +389,15 @@ class TRANSFORMERCell(Module):
 
         # interpolation
         npnodes = th.sum(g.ndata["pivotal_nodes"])
+        print(z.shape)
+        print(npnodes)
         H = th.reshape(z,(npnodes,-1))
         W = g.ndata["pivotal_weights"] 
-        w_norm = th.sum(W,axis=0) 
-        R = th.matmul(W,H)/w_norm
+        w_norm = th.sum(W,axis=1).unsqueeze(axis=1)
+        print(th.matmul(W,H).shape)
+        print(w_norm.shape)
+        R = th.div(th.matmul(W,H), w_norm)
+        # R = th.matmul(W,H)/w_norm
 
         g.ndata["R"] = R
 
@@ -384,9 +410,9 @@ class TRANSFORMERCell(Module):
    
         for index in range(self.process_iters):
             def process_edges_recovery(edges):
-                return self.processor_edges_recovery(edges, index)
+                return self.process_edges_recovery(edges, index)
             def process_nodes_recovery(nodes):
-                return self.processor_nodes_recovery(nodes, index)
+                return self.process_nodes_recovery(nodes, index)
             # compute junction-branch interactions
             g.apply_edges(process_edges_recovery)
             g.update_all(fn.copy_e('proc_edge', 'm'), 
@@ -396,7 +422,7 @@ class TRANSFORMERCell(Module):
 
         # DECODE
         g.apply_nodes(self.decode_nodes_recovery)
-        
+        print("yooooo")
         return g.ndata["h"]
     
     def forward(self, g):

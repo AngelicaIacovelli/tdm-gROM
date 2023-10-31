@@ -20,9 +20,9 @@ scheduler:
   lr_decay: 0.028826399523639707 #optimize 
 
 training:
-  batch_size: 29 #optimize
+  batch_size: 1 #optimize
   epochs: 500
-  geometries: "healthy"
+  geometries: "test"
   train_test_split: 0.9
   loss_weight_boundary_nodes: 37 #optimize
   output_interval: 50

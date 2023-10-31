@@ -362,7 +362,9 @@ def generate_normalized_graphs(input_dir, norm_type, geometries, cfg, statistics
             ]
         elif geometries == "pathological":
             list_of_models = ["s0104_0001", "s0080_0001", "s0140_2001"]
-        else:
+        elif geometries == "test":
+            list_of_models = ["s0090_0001", "s0091_0001"]
+        else:    
             raise ValueError("Type of geometry " + geometries + "does not exist")
 
         for graph in graphs:

@@ -299,8 +299,8 @@ def add_time_dependent_fields(
         graphs.append(new_graph)
 
         # Create a shuffled version of the graph
-        shuffled_graph = NodeShuffle()(new_graph)
-        graphs.append(shuffled_graph)
+        #shuffled_graph = NodeShuffle()(new_graph)
+        #graphs.append(shuffled_graph)
 
     return graphs
 
