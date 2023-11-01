@@ -7,7 +7,7 @@ from torch.nn import Linear
 import torch.nn.functional as F
 import numpy as np
 import dgl.function as fn
-
+import dgl
 
 
 
@@ -233,7 +233,7 @@ class TRANSFORMERCell(Module):
             dictionary (key: 'pred_labels', value: decoded features)
 
         """
-        h = self.decoder_nodes_reduction(nodes.data["h"])
+        h = self.decoder_nodes_reduction(nodes.data["proc_node"])
         return {"h": h}
     
     
@@ -269,8 +269,8 @@ class TRANSFORMERCell(Module):
         f3 = edges.dst['proc_node']
 
         proc_edge = self.processor_edges_reduction[index](th.cat((f1, f2, f3), 1))
-        print(f1.shape)
-        print(proc_edge.shape)
+        # print(f1.shape)
+        # print(proc_edge.shape)
         # add residual connection
         proc_edge = proc_edge + f1
         return {'proc_edge': proc_edge}
@@ -387,17 +387,38 @@ class TRANSFORMERCell(Module):
     
     def graph_recovery(self, g, z):
 
+        # controllare se g e' grafo singolo o batch
+        graphs = dgl.unbatch(g)
+
         # interpolation
         npnodes = th.sum(g.ndata["pivotal_nodes"])
-        print(z.shape)
-        print(npnodes)
+        # print(z.shape)
+        # print(npnodes)
         H = th.reshape(z,(npnodes,-1))
-        W = g.ndata["pivotal_weights"] 
-        w_norm = th.sum(W,axis=1).unsqueeze(axis=1)
-        print(th.matmul(W,H).shape)
-        print(w_norm.shape)
-        R = th.div(th.matmul(W,H), w_norm)
-        # R = th.matmul(W,H)/w_norm
+
+        R = th.zeros((g.ndata["pivotal_weights"].shape[0], 
+                      H.shape[1]))
+
+        offset_h = 0
+        offset_w = 0
+        for single_graph in graphs:
+            W = single_graph.ndata["pivotal_weights"]
+            npnodes_per_graph = W.shape[1]
+            single_H = H[offset_h:offset_h + npnodes_per_graph,:]
+            w_norm = th.sum(W,axis=1).unsqueeze(axis=1)
+            R[offset_w:offset_w + W.shape[0]] = th.div(th.matmul(W,single_H), w_norm)
+
+            offset_w += W.shape[0]
+            offset_h += npnodes_per_graph
+
+        # W = g.ndata["pivotal_weights"] 
+
+
+        # w_norm = th.sum(W,axis=1).unsqueeze(axis=1)
+        # # print(th.matmul(W,H).shape)
+        # # print(w_norm.shape)
+        # R = th.div(th.matmul(W,H), w_norm)
+        # # R = th.matmul(W,H)/w_norm
 
         g.ndata["R"] = R
 
@@ -422,7 +443,6 @@ class TRANSFORMERCell(Module):
 
         # DECODE
         g.apply_nodes(self.decode_nodes_recovery)
-        print("yooooo")
         return g.ndata["h"]
     
     def forward(self, g):

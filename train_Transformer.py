@@ -216,7 +216,6 @@ class MGNTrainer:
             pred = self.model(graph)
             loss = mse(pred, ns[:,0:2], mask = 1)
             self.backward(loss)
-            grqg
 
         return loss
 
