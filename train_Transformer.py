@@ -294,9 +294,7 @@ def do_training(cfg, dist):
     ax.legend()
     plt.savefig("loss.png", bbox_inches="tight")
 
-    ep, eq = evaluate_model(cfg, logger, trainer.model, trainer.params, trainer.graphs)
-    return (ep + eq) / 2
-
+    return loss
 
 
 

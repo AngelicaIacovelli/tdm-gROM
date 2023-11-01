@@ -48,7 +48,7 @@ architecture:
   number_hidden_layers_mlp: 2 #optimize LSTM #optimize TRANSFORMER
   out_size: 2 
   autoloop_iterations: 1 #optimize LSTM
-  process_iterations: 1 #optimize TRANSFORMER
+  process_iterations: 1 #optimize LSTM #optimize TRANSFORMER
   latent_size_TRANSFORMER: 10 #optimize TRANSFORMER
 
 hyperparameter_optimization:

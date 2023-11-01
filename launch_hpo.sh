@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name="hpo.py"
-#SBATCH --output="train.%j.%N.out"
+#SBATCH --job-name="hpo_Transformer.py"
+#SBATCH --output="hpo_Transformer.%j.%N.out"
 #SBATCH --partition=gpu-shared
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -24,4 +24,4 @@ export WORLD_SIZE=1
 export MASTER_ADDR=127.0.0.1
 
 #Run the job
-python3 hpo.py
+python3 hpo_Transformer.py
