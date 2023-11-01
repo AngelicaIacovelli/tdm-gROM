@@ -397,7 +397,7 @@ class TRANSFORMERCell(Module):
         H = th.reshape(z,(npnodes,-1))
 
         R = th.zeros((g.ndata["pivotal_weights"].shape[0], 
-                      H.shape[1]))
+                      H.shape[1]), device=z.device)
 
         offset_h = 0
         offset_w = 0

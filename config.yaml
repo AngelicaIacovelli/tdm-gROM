@@ -16,17 +16,17 @@
 work_directory: "."
 
 scheduler:
-  lr: 0.00043727270420871694 #optimize
-  lr_decay: 0.028826399523639707 #optimize 
+  lr: 0.00043727270420871694 #optimize LSTM
+  lr_decay: 0.028826399523639707 #optimize LSTM 
 
 training:
-  batch_size: 2 #optimize
+  batch_size: 26 #optimize LSTM #optimize TRANSFORMER
   epochs: 500
   geometries: "test"
   train_test_split: 0.9
-  loss_weight_boundary_nodes: 37 #optimize
+  loss_weight_boundary_nodes: 37 #optimize LSTM
   output_interval: 50
-  backward_interval: 5
+  backward_interval: 5 
 
 checkpoints:
   ckpt_path: "checkpoints"
@@ -40,16 +40,16 @@ testing:
   graph: "s0095_0001.21.0.grph"
 
 architecture:
-  hidden_dim: 58 #optimize
+  hidden_dim: 58 #optimize LSTM
   in_feats: 17 #put 18 for LSTM and 17 for TRANSFORMER
   edge_feats: 9
-  latent_size_gnn: 26 #optimize
-  latent_size_mlp: 134 #optimize
-  number_hidden_layers_mlp: 2 #optimize
-  out_size: 2
-  autoloop_iterations: 1 #optimize
-  process_iterations: 1
-  latent_size_TRANSFORMER: 10
+  latent_size_gnn: 26 #optimize LSTM #optimize TRANSFORMER
+  latent_size_mlp: 134 #optimize LSTM #optimize TRANSFORMER
+  number_hidden_layers_mlp: 2 #optimize LSTM #optimize TRANSFORMER
+  out_size: 2 
+  autoloop_iterations: 1 #optimize LSTM
+  process_iterations: 1 #optimize TRANSFORMER
+  latent_size_TRANSFORMER: 10 #optimize TRANSFORMER
 
 hyperparameter_optimization:
   runs: 100
