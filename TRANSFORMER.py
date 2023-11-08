@@ -407,10 +407,9 @@ class TRANSFORMERCell(Module):
             single_H = H[offset_h:offset_h + npnodes_per_graph,:]
             w_norm = th.sum(W,axis=1).unsqueeze(axis=1)
             R[offset_w:offset_w + W.shape[0]] = th.div(th.matmul(W,single_H), w_norm)
-
             offset_w += W.shape[0]
             offset_h += npnodes_per_graph
-
+            
         # W = g.ndata["pivotal_weights"] 
 
 

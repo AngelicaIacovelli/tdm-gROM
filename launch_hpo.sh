@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name="hpo_Transformer.py"
-#SBATCH --output="hpo_Transformer.%j.%N.out"
+#SBATCH --output="hpo.%j.%N.out"
 #SBATCH --partition=gpu-shared
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1

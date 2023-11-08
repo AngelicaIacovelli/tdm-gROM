@@ -143,7 +143,8 @@ def resample_time(field, timesteps, period, shift=0):
     for t_ in t:
         resampled_field[t_] = np.zeros(nnodes)
 
-    #print(len(t))
+    # Print the number of timesteps generated
+    print(f"Number of timesteps generated: {len(t)}")
 
     for inode in range(nnodes):
         values = []
@@ -285,6 +286,10 @@ def add_time_dependent_fields(
             dt = graph_data["period"] / (timesteps - 1)
             data_augmentation_shift = dt / ncopies * icopy
             actual_shift = data_augmentation_shift + shift
+
+            #print(f"Graph {icopy + 1}: Initial pressure data = {c_pressure}")
+            #print(f"Graph {icopy + 1}: Initial flowrate data = {c_flowrate}")
+
             c_pressure = resample_time(
                 c_pressure, timesteps, period=graph_data["period"], shift=actual_shift
             )
