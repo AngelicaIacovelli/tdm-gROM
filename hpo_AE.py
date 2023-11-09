@@ -5,7 +5,7 @@ from ray.train import Checkpoint
 from ray.tune.search.optuna import OptunaSearch
 import hydra
 from omegaconf import DictConfig
-from train_Transformer import do_training
+from train_AE import do_training
 import os
 from modulus.distributed.manager import DistributedManager
 
@@ -23,7 +23,7 @@ def objective(config, cfg):
     cfg.architecture.latent_size_mlp = config["latent_size_mlp"]
     cfg.architecture.number_hidden_layers_mlp = config["number_hidden_layers_mlp"]
     cfg.architecture.process_iterations = config["process_iterations"]
-    cfg.architecture.latent_size_TRANSFORMER = config["latent_size_TRANSFORMER"]
+    cfg.architecture.latent_size_AE = config["latent_size_AE"]
 
     metric = do_training(cfg, dist).cpu().detach().numpy()
     
@@ -43,7 +43,7 @@ def main(cfg: DictConfig):
         "latent_size_mlp": tune.randint(1, 200),
         "number_hidden_layers_mlp": tune.randint(1, 3),
         "process_iterations": tune.randint(0, 4),
-        "latent_size_TRANSFORMER": tune.randint(1,100),
+        "latent_size_AE": tune.randint(1,100),
     }
     algo = OptunaSearch()  
 

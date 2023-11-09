@@ -26,7 +26,7 @@ from inference import evaluate_model
 from modulus.distributed.manager import DistributedManager
 
 #  from modulus.models.meshgraphnet import MeshGraphNet
-from TRANSFORMER import TRANSFORMERCell
+from AE import AECell
 
 # from modulus.datapipes.gnn.mgn_dataset import MGNDataset
 import generate_dataset as gd
@@ -144,7 +144,7 @@ class MGNTrainer:
         )
 
         # instantiate the model
-        self.model = TRANSFORMERCell(cfg)
+        self.model = AECell(cfg)
 
         if cfg.performance.jit:
             self.model = torch.jit.script(self.model).to(self.device)

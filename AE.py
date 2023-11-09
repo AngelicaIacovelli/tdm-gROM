@@ -82,7 +82,7 @@ class MLP(Module):
         return f
 
 
-class TRANSFORMERCell(Module):
+class AECell(Module):
     """
     Graph LSTM cell.
 
@@ -92,7 +92,7 @@ class TRANSFORMERCell(Module):
     """
 
     def __init__(self, cfg):
-        super(TRANSFORMERCell, self).__init__()
+        super(AECell, self).__init__()
 
         self.encoder_nodes_reduction = MLP(
             cfg.architecture.in_feats,
@@ -102,7 +102,7 @@ class TRANSFORMERCell(Module):
         )
         self.decoder_nodes_reduction= MLP(
             cfg.architecture.latent_size_gnn,
-            cfg.architecture.latent_size_TRANSFORMER,
+            cfg.architecture.latent_size_AE,
             cfg.architecture.latent_size_mlp,
             cfg.architecture.number_hidden_layers_mlp,
             False,
@@ -120,14 +120,14 @@ class TRANSFORMERCell(Module):
             cfg.architecture.number_hidden_layers_mlp,
         )
         self.decoder_nodes_recovery = MLP(
-            cfg.architecture.latent_size_TRANSFORMER,
+            cfg.architecture.latent_size_AE,
             cfg.architecture.out_size,
             cfg.architecture.latent_size_mlp,
             cfg.architecture.number_hidden_layers_mlp,
             False,
         )
         self.encoder_nodes_recovery = MLP(
-            cfg.architecture.latent_size_TRANSFORMER,
+            cfg.architecture.latent_size_AE,
             cfg.architecture.latent_size_gnn,
             cfg.architecture.latent_size_mlp,
             cfg.architecture.number_hidden_layers_mlp,
