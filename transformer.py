@@ -97,11 +97,8 @@ class TransformerCell(Module):
         self.W_2 = Linear(N_lat, N_inn, bias=False).float()
         self.W_3 = Linear(N_lat, N_g, bias=False).float()
 
-        self.MLP_p = MLP(N_mu, N_lat, N_neu_MLP_p, N_hid_MLP_p, normalize=False)
+        self.MLP_p = MLP(N_mu, N_lat, N_neu_MLP_p, N_hid_MLP_p, normalize=False) # True?
         self.MLP_m = MLP(N_g, N_lat, N_neu_MLP_m, N_hid_MLP_m, normalize=False)
-
-        #self.a = th.randn((N_t,))
-        #self.g = th.randn((N_g,))
 
         self.N_t = N_t
         self.N_lat = N_lat
@@ -118,40 +115,11 @@ class TransformerCell(Module):
             Z_tilde: matrix of dimension [N_t + 1, N_lat], containing all the processed encoded time steps.
         """
 
-        # Implementation 0 (rewrite a and g at each time step, preallocate Z_tilde) -> not working
-        """
-        z_minus = self.MLP_p(mu)
-        Z_tilde = th.zeros((self.N_t + 1, self.N_lat))
-        Z_tilde[0, :] = z_minus
-        Z_tilde[1, :] = z_0
-        for idx_t in th.arange(2, self.N_t + 1):
-            a = softmax(th.mv(self.W_1(self.W_2(Z_tilde[0 : idx_t, :])), Z_tilde[idx_t - 1, :]) / self.N_lat_sqrt, dim = 0)
-            g = th.matmul(a, self.W_3(Z_tilde[0 : idx_t, :]))
-            Z_tilde[idx_t, :] = Z_tilde[idx_t - 1, :] + self.MLP_m(g)
-        """
-
-        # Implementation 1 (growing list for a and g, preallocate Z_tilde) -> working
-        z_minus = self.MLP_p(mu)
-        Z_tilde = th.zeros((self.N_t + 1, self.N_lat))
-        Z_tilde[0, :] = z_minus
-        Z_tilde[1, :] = z_0
-        a = th.nn.ParameterList()
-        g = th.nn.ParameterList()
-        for idx_t in th.arange(2, self.N_t + 1):
-            a.append(th.nn.Parameter(softmax(th.mv(self.W_1(self.W_2(Z_tilde)), Z_tilde[idx_t - 1, :]) / self.N_lat_sqrt, dim = 0)))
-            g.append(th.nn.Parameter(th.matmul(a[-1], self.W_3(Z_tilde))))
-            Z_tilde[idx_t, :] = Z_tilde[idx_t - 1, :] + self.MLP_m(g[-1])
-
-        # Implementation 2 (growing list for a and g, expanding Z_tilde rows at each time step) -> working
-        """
         Z_tilde = self.MLP_p(mu)
         Z_tilde = th.cat((Z_tilde, z_0), dim = 0)
-        a = th.nn.ParameterList()
-        g = th.nn.ParameterList()
         for idx_t in th.arange(2, self.N_t + 1):
-            a.append(th.nn.Parameter(softmax(th.mv(self.W_1(self.W_2(Z_tilde)), Z_tilde[idx_t - 1, :]) / self.N_lat_sqrt, dim = 0)))
-            g.append(th.nn.Parameter(th.matmul(a[-1], self.W_3(Z_tilde))))
-            Z_tilde = th.cat((Z_tilde, th.reshape(Z_tilde[idx_t - 1, :] + self.MLP_m(g[-1]), (1, self.N_lat))), dim = 0)
-        """
+            a = softmax(th.mv(self.W_1(self.W_2(Z_tilde)), Z_tilde[idx_t - 1, :]) / self.N_lat_sqrt, dim = 0)
+            g = th.matmul(a, self.W_3(Z_tilde))
+            Z_tilde = th.cat((Z_tilde, th.reshape(Z_tilde[idx_t - 1, :] + self.MLP_m(g), (1, self.N_lat))), dim = 0)
 
         return Z_tilde
