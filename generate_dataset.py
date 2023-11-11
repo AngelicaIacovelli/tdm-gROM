@@ -22,7 +22,7 @@ from dgl.data.utils import load_graphs as lg
 from dgl.data import DGLDataset
 import time
 import copy
-
+from omegaconf import DictConfig
 
 def compute_statistics(graphs, fields, statistics):
     """
@@ -391,6 +391,12 @@ def generate_normalized_graphs(input_dir, norm_type, geometries, cfg, statistics
             (graphs[graph].number_of_nodes(), cfg.architecture.hidden_dim),
             dtype=th.float32,
         )
+
+        if cfg.model.LSTM:  # Check if LSTM is True
+            # Remove the "pivotal_nodes" feature from the graph
+            if "pivotal_nodes" in graphs[graph].ndata:
+                del graphs[graph].ndata["pivotal_nodes"]
+                del graphs[graph].ndata["pivotal_weights"]
 
     return graphs, params
 
