@@ -16,13 +16,13 @@
 work_directory: "."
 
 scheduler:
-  lr: 0.00043727270420871694 #optimize LSTM
-  lr_decay: 0.028826399523639707 #optimize LSTM 
+  lr: 0.00043727270420871694 #optimize LSTM #optimize TRANSFORMER
+  lr_decay: 0.028826399523639707 #optimize LSTM #optimize TRANSFORMER
 
 training:
   batch_size: 27 #optimize LSTM #optimize AE
   epochs: 500
-  geometries: "test" #"healthy" for LSTM, "test" for AE
+  geometries: "healthy" #"healthy" for LSTM, "test" for AE
   train_test_split: 0.9
   loss_weight_boundary_nodes: 37 #optimize LSTM
   output_interval: 50
@@ -41,7 +41,7 @@ testing:
 
 architecture:
   hidden_dim: 58 #optimize LSTM
-  in_feats: 17 #put 18 for LSTM and 17 for AE
+  in_feats: 18 #put 18 for LSTM and 17 for AE
   edge_feats: 9
   latent_size_gnn: 26 #optimize LSTM #optimize AE
   latent_size_mlp: 134 #optimize LSTM #optimize AE
@@ -53,3 +53,19 @@ architecture:
 
 hyperparameter_optimization:
   runs: 100
+
+model:
+  LSTM: "True" # "True" for LSTM model, "False" for Transformer 
+
+
+transformer_architecture:
+  N_t: 41
+  N_lat: 60 #why not hpo? 
+  N_inn: 10 #hpo Transformer
+  N_g: 4 # hpo Transformer
+  N_mu: 30 #hpo Transformer
+  N_neu_MLP_p: 30 # hpo Transformer
+  N_hid_MLP_p: 3  # hpo Transformer
+  N_neu_MLP_m: 30 # hpo Transformer
+  N_hid_MLP_m: 3  # hpo Transformer
+ 
