@@ -392,7 +392,7 @@ def generate_normalized_graphs(input_dir, norm_type, geometries, cfg, statistics
             dtype=th.float32,
         )
 
-        if cfg.model.LSTM:  # Check if LSTM is True
+        if cfg.model.LSTM == "True":  # Check if LSTM is True
             # Remove the "pivotal_nodes" feature from the graph
             if "pivotal_nodes" in graphs[graph].ndata:
                 del graphs[graph].ndata["pivotal_nodes"]

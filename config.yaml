@@ -16,13 +16,13 @@
 work_directory: "."
 
 scheduler:
-  lr: 0.00043727270420871694 #optimize LSTM #optimize TRANSFORMER
-  lr_decay: 0.028826399523639707 #optimize LSTM #optimize TRANSFORMER
+  lr: 0.000166092 #optimize LSTM #optimize TRANSFORMER
+  lr_decay: 0.0131133 #optimize LSTM #optimize TRANSFORMER
 
 training:
-  batch_size: 27 #optimize LSTM #optimize AE
+  batch_size: 16 #optimize LSTM #optimize AE
   epochs: 500
-  geometries: "healthy" #"healthy" for LSTM, "test" for AE
+  geometries: "test" #"healthy" for LSTM, "test" for AE
   train_test_split: 0.9
   loss_weight_boundary_nodes: 37 #optimize LSTM
   output_interval: 50
@@ -41,21 +41,21 @@ testing:
 
 architecture:
   hidden_dim: 58 #optimize LSTM
-  in_feats: 18 #put 18 for LSTM and 17 for AE
+  in_feats: 17 #put 18 for LSTM and 17 for AE
   edge_feats: 9
-  latent_size_gnn: 26 #optimize LSTM #optimize AE
-  latent_size_mlp: 134 #optimize LSTM #optimize AE
-  number_hidden_layers_mlp: 2 #optimize LSTM #optimize AE
+  latent_size_gnn: 63 #optimize LSTM #optimize AE
+  latent_size_mlp: 54 #optimize LSTM #optimize AE
+  number_hidden_layers_mlp: 1 #optimize LSTM #optimize AE
   out_size: 2 
   autoloop_iterations: 1 #optimize LSTM
-  process_iterations: 1 #optimize LSTM #optimize AE
-  latent_size_AE: 10 #optimize AE
+  process_iterations: 0 #optimize LSTM #optimize AE
+  latent_size_AE: 87 #optimize AE
 
 hyperparameter_optimization:
   runs: 100
 
 model:
-  LSTM: "True" # "True" for LSTM model, "False" for Transformer 
+  LSTM: "False" # "True" for LSTM model, "False" for Transformer 
 
 
 transformer_architecture:

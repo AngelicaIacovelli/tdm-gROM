@@ -45,9 +45,9 @@ from omegaconf import DictConfig
 import uuid
 import os
 from torch.autograd import Function
+from AE import AECell
 
-
-def mse(input, target, mask):
+def mse(input, target, mask=1):
     """
     Mean square error.
 
@@ -67,7 +67,7 @@ def mse(input, target, mask):
 
 
         
- class MGNTrainer:
+class MGNTrainer:
     def __init__(self, logger, cfg, dist):
         # set device
         self.device = dist.device
@@ -126,7 +126,6 @@ def mse(input, target, mask):
         )
 
 
-
         # instantiate the model
         self.model = TransformerCell(cfg)
 
@@ -160,52 +159,6 @@ def mse(input, target, mask):
         self.params = params
         self.cfg = cfg
 
-    def backward(self, loss):
-        """
-        Perform backward pass.
-
-        Arguments:
-            loss: loss value.
-
-        """
-        # backward pass
-        if self.cfg.performance.amp:
-            self.scaler.scale(loss).backward()
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
-        else:
-            loss.backward()
-            self.optimizer.step()(cfg)
-
-        if cfg.performance.jit:
-            self.model = torch.jit.script(self.model).to(self.device)
-        else:
-            self.model = self.model.to(self.device)
-
-        # enable train mode
-        self.model.train()
-
-        # instantiate loss, optimizer, and scheduler
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=cfg.scheduler.lr)
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            self.optimizer,
-            T_max=cfg.training.epochs,
-            eta_min=cfg.scheduler.lr * cfg.scheduler.lr_decay,
-        )
-        self.scaler = GradScaler()
-
-        # load checkpoint
-        self.epoch_init = load_checkpoint(
-            os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
-            models=self.model,
-            optimizer=self.optimizer,
-            scheduler=self.scheduler,
-            scaler=self.scaler,
-            device=self.device,
-        )
-
-        self.params = params
-        self.cfg = cfg
 
     def backward(self, loss):
         """
@@ -225,7 +178,7 @@ def mse(input, target, mask):
             self.optimizer.step()
 
 
-    def train(self, mu, z_0, states, nf): 
+    def train(self, mu, z_0, Z, states, ns): 
         """
         Perform one training iteration over one graph. The training is performed
         over multiple timesteps, where the number of timesteps is specified in
@@ -242,20 +195,18 @@ def mse(input, target, mask):
         self.optimizer.zero_grad()
         self.model.zero_memory(graph)
         loss = 0
-        
-        for istride in range(self.stride - 1):
 
-            pred = self.model(mu, z_0)
+        pred = self.model(mu, z_0)
 
-            # add prediction by MeshGraphNet to current state
-            new_state = torch.clone(states[-1])
-            new_state[:, 0:2] += pred
-            # print("New state: ", new_state[:, 0:2])
-            # impose exact flow rate at the inlet (to remove it from loss)
-            new_state[imask, 1] = ns[imask, 1, istride]
-            states.append(new_state)
+        # add prediction by MeshGraphNet to current state
+        new_state = torch.clone(states[-1])
+        new_state[:, 0:2] += pred
+        # print("New state: ", new_state[:, 0:2])
+        # impose exact flow rate at the inlet (to remove it from loss)
+        new_state[imask, 1] = ns[imask, 1, istride]
+        states.append(new_state)
 
-            loss += mse(states[-1][:,0:2], ns[:,:, istride], mask)
+        loss += mse(pred, Z, mask = 1)
 
         self.backward(loss)
 
@@ -266,7 +217,7 @@ def mse(input, target, mask):
 def read_cfg(cfg: DictConfig):
     return cfg
 
-def do_training(cfg, dist, graph):
+def do_training(cfg, dist):
     """
     Perform training over all graphs in the dataset.
 
@@ -284,29 +235,35 @@ def do_training(cfg, dist, graph):
     ns = graph.ndata["nfeatures"][:, 0:2, 1:]
 
     # create mask to weight boundary nodes more in loss
-    mask = torch.ones(ns[:, :, 0].shape, device=self.device)
+    mask = torch.ones(ns[:, :, 0].shape, device=MGNTrainer.device)
     imask = graph.ndata["inlet_mask"].bool()
     outmask = graph.ndata["outlet_mask"].bool()
 
-    bcoeff = self.cfg.training.loss_weight_boundary_nodes
-    mask[imask, 0] = mask[imask, 0] * bcoeff
-    # flow rate is known
-    mask[outmask, 0] = mask[outmask, 0] * bcoeff
-    mask[outmask, 1] = mask[outmask, 1] * bcoeff
+    # bcoeff = self.cfg.training.loss_weight_boundary_nodes
+    # mask[imask, 0] = mask[imask, 0] * bcoeff
+    # # flow rate is known
+    # mask[outmask, 0] = mask[outmask, 0] * bcoeff
+    # mask[outmask, 1] = mask[outmask, 1] * bcoeff
+
+    mask = 1
 
     states = [graph.ndata["nfeatures"][:, :, 0]]
 
     graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
 
     nnodes = mask.shape[0]
-    nf = torch.zeros((nnodes, 1), device=self.device)
+    nf = torch.zeros((nnodes, 1), device=MGNTrainer.device)
 
-    for istride in range(self.stride - 1):
-        # impose boundary condition
-        nf[imask, 0] = ns[imask, 1, istride]
-        mu = torch.cat((states[-1], nf), 1)
+    Z = torch.zeros() # riempi con dim giuste 
 
-    z_0 = self.graph_reduction(graph) # ??
+    for graph in trainer.train_dataloader:
+        for istride in range(MGNTrainer.stride - 1):
+            # impose boundary condition
+            nf[imask, 0] = ns[imask, 1, istride]
+            mu = torch.cat((states[-1], nf), 1) 
+
+            z_0 = AECell.graph_reduction(graph) # ?? aggiungi pre processing + chiama graph red su nn già trainata
+            # costruisci matrice 3d Z che ha dim: (num nodi (somma totale tutti grafi), num latente_trasf, num timesteps), preso primo timestep, avrò Z_0
 
     # training loop
     start = time.time()
@@ -315,9 +272,9 @@ def do_training(cfg, dist, graph):
 
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
         for graph in trainer.train_dataloader:
-            loss = trainer.train(mu, z_0)
+            loss = trainer.train(mu, z_0, Z, states, ns) #aggiungi ciclo for per non passare tutta z ma solo dei batches sulla dim dei nodi (prima dimensione), è un altro parametro del hpo, aggiungi a config
         loss_vector.append(
-            loss.cpu().detach().numpy()
+            loss.cpu().detach().numpy() 
         )  # Append the loss value to the vector
 
         if torch.cuda.is_available():
@@ -369,13 +326,12 @@ def do_training(cfg, dist, graph):
     return (ep + eq) / 2
 
 
-
 @hydra.main(version_base=None, config_path=".", config_name="config")
 def main(cfg: DictConfig):
     # initialize distributed manager
     DistributedManager.initialize()
     dist = DistributedManager()
-    do_training(cfg, dist, graph)
+    do_training(cfg, dist)
 
 if __name__ == "__main__":
     main()
