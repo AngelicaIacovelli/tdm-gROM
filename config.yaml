@@ -63,7 +63,7 @@ transformer_architecture:
   N_lat: 60 #why not hpo? 
   N_inn: 10 #hpo Transformer
   N_g: 4 # hpo Transformer
-  N_mu: 30 #hpo Transformer
+  N_mu: 41 
   N_neu_MLP_p: 30 # hpo Transformer
   N_hid_MLP_p: 3  # hpo Transformer
   N_neu_MLP_m: 30 # hpo Transformer

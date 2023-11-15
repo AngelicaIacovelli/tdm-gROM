@@ -194,9 +194,9 @@ class MGNTrainer:
             loss: loss value.
 
         """
-        graph = graph.to(self.device)
+        # graph = graph.to(self.device)
         self.optimizer.zero_grad()
-        self.model.zero_memory(graph)
+        # self.model.zero_memory(graph)
         loss = 0
 
         pred = self.model(mu, z_0)
@@ -262,7 +262,7 @@ def do_training(cfg, dist):
 
     ngraphs = len(trainer.train_dataloader)
     Z = torch.zeros(npnodes * ngraphs, cfg.architecture.latent_size_AE, cfg.transformer_architecture.N_timesteps, device=trainer.device)
-    mu = torch.zeros(npnodes * ngraphs, cfg.architecture.num_samples_inlet_flowrate, cfg.transformer_architecture.N_timesteps, device=trainer.device)
+    mu = torch.zeros(npnodes * ngraphs, cfg.transformer_architecture.num_samples_inlet_flowrate, cfg.transformer_architecture.N_timesteps, device=trainer.device)
     idx_g = 0
     for graph in trainer.train_dataloader:
         graph = graph.to(device)       
@@ -276,6 +276,7 @@ def do_training(cfg, dist):
         graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
         nnodes = mask.shape[0]
         nf = torch.zeros(nnodes, 1)
+        nf = nf.to(device)
 
         idx_t = 0
         for istride in range(trainer.stride - 1):
@@ -287,7 +288,7 @@ def do_training(cfg, dist):
                 Z[idx_g : idx_g + npnodes, :, idx_t] = torch.reshape(AE_model.graph_reduction(graph), (npnodes, cfg.architecture.latent_size_AE))
 
             # impose boundary condition
-            print(graph.ndata["nfeatures"].shape)
+            # print(graph.ndata["nfeatures"].shape)
             nf[imask, 0] = ns[imask, 1]
             #mu[idx_g : idx_g + npnodes, :, idx_t] = ???
 
@@ -303,6 +304,8 @@ def do_training(cfg, dist):
     loss_vector = []  # Initialize an empty list to store loss values
 
     Z_batch_size = cfg.transformer_architecture.batch_size_Z
+
+    total_nodes = sum(graph.number_of_nodes() for graph in trainer.train_dataloader)
 
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
         for graph in trainer.train_dataloader:
