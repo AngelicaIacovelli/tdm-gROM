@@ -380,7 +380,7 @@ class AECell(Module):
 
         # DECODE
         g.apply_nodes(self.decode_nodes_reduction)
-        
+
         z = th.reshape(g.ndata["h"][g.ndata["pivotal_nodes"].bool(),:],(-1,))
         return z
     

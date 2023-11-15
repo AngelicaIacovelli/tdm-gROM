@@ -13,7 +13,6 @@ import dgl.function as fn
 # import graph1d.generate_normalized_graphs as nz
 # import json
 
-
 class MLP(Module):
     """
     Multi-layer perceptron.

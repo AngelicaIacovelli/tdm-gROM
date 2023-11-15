@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import dgl
 import torch
 import psutil
 import matplotlib.pyplot as plt
@@ -65,7 +65,9 @@ def mse(input, target, mask=1):
     """
     return (mask * (input - target) ** 2).mean()
 
-
+def dgl_collate(batch):
+    graphs = [item for item in batch]
+    return dgl.batch(graphs)
         
 class MGNTrainer:
     def __init__(self, logger, cfg, dist):
@@ -123,6 +125,7 @@ class MGNTrainer:
             shuffle=True,
             drop_last=True,
             pin_memory=True,
+            collate_fn=dgl_collate
         )
 
 
@@ -148,7 +151,7 @@ class MGNTrainer:
 
         # load checkpoint
         self.epoch_init = load_checkpoint(
-            os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
+            os.path.join(cfg.transformer_architecture.checkpoints_ckpt_path, cfg.transformer_architecture.checkpoints_ckpt_name),
             models=self.model,
             optimizer=self.optimizer,
             scheduler=self.scheduler,
@@ -232,50 +235,86 @@ def do_training(cfg, dist):
     # initialize trainer
     trainer = MGNTrainer(logger, cfg, dist)
 
-    ns = graph.ndata["nfeatures"][:, 0:2, 1:]
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # create mask to weight boundary nodes more in loss
-    mask = torch.ones(ns[:, :, 0].shape, device=MGNTrainer.device)
-    imask = graph.ndata["inlet_mask"].bool()
-    outmask = graph.ndata["outlet_mask"].bool()
+    # instantiate the model
+    AE_model = AECell(cfg)
 
-    # bcoeff = self.cfg.training.loss_weight_boundary_nodes
-    # mask[imask, 0] = mask[imask, 0] * bcoeff
-    # # flow rate is known
-    # mask[outmask, 0] = mask[outmask, 0] * bcoeff
-    # mask[outmask, 1] = mask[outmask, 1] * bcoeff
+    if cfg.performance.jit:
+        AE_model = torch.jit.script(AE_model).to(device)
+    else:
+        AE_model = AE_model.to(device)
 
-    mask = 1
+    scaler = GradScaler()
+    # enable eval mode
+    AE_model.eval()
 
-    states = [graph.ndata["nfeatures"][:, :, 0]]
+    # load checkpoint
+    _ = load_checkpoint(
+        os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
+        models=AE_model,
+        device=device,
+        scaler=scaler,
+    )
+    
+    # pivotal nodes
+    npnodes = torch.sum(next(iter(trainer.train_dataloader)).ndata["pivotal_nodes"])
 
-    graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
-
-    nnodes = mask.shape[0]
-    nf = torch.zeros((nnodes, 1), device=MGNTrainer.device)
-
-    Z = torch.zeros() # riempi con dim giuste 
-
+    ngraphs = len(trainer.train_dataloader)
+    Z = torch.zeros(npnodes * ngraphs, cfg.architecture.latent_size_AE, cfg.transformer_architecture.N_timesteps, device=trainer.device)
+    mu = torch.zeros(npnodes * ngraphs, cfg.architecture.num_samples_inlet_flowrate, cfg.transformer_architecture.N_timesteps, device=trainer.device)
+    idx_g = 0
     for graph in trainer.train_dataloader:
-        for istride in range(MGNTrainer.stride - 1):
-            # impose boundary condition
-            nf[imask, 0] = ns[imask, 1, istride]
-            mu = torch.cat((states[-1], nf), 1) 
+        graph = graph.to(device)       
 
-            z_0 = AECell.graph_reduction(graph) # ?? aggiungi pre processing + chiama graph red su nn già trainata
-            # costruisci matrice 3d Z che ha dim: (num nodi (somma totale tutti grafi), num latente_trasf, num timesteps), preso primo timestep, avrò Z_0
+        ns = graph.ndata["nfeatures"][:, 0:2, 1:]
+        # create mask to weight boundary nodes more in loss
+        mask = torch.ones(ns[:, :, 0].shape)
+        imask = graph.ndata["inlet_mask"].bool()
+
+        states = [graph.ndata["nfeatures"][:, :, 0]]
+        graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
+        nnodes = mask.shape[0]
+        nf = torch.zeros(nnodes, 1)
+
+        idx_t = 0
+        for istride in range(trainer.stride - 1):
+            # inference on AE
+            ns = graph.ndata["nfeatures"][:, :, istride]
+            graph.ndata["current_state"] = ns
+
+            with torch.no_grad():
+                Z[idx_g : idx_g + npnodes, :, idx_t] = torch.reshape(AE_model.graph_reduction(graph), (npnodes, cfg.architecture.latent_size_AE))
+
+            # impose boundary condition
+            print(graph.ndata["nfeatures"].shape)
+            nf[imask, 0] = ns[imask, 1]
+            #mu[idx_g : idx_g + npnodes, :, idx_t] = ???
+
+            idx_t += 1
+
+        idx_g += npnodes
+
+    z_0 = Z[:, :, 0]
 
     # training loop
     start = time.time()
     logger.info("Training started...")
     loss_vector = []  # Initialize an empty list to store loss values
 
+    Z_batch_size = cfg.transformer_architecture.batch_size_Z
+
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
         for graph in trainer.train_dataloader:
-            loss = trainer.train(mu, z_0, Z, states, ns) #aggiungi ciclo for per non passare tutta z ma solo dei batches sulla dim dei nodi (prima dimensione), è un altro parametro del hpo, aggiungi a config
-        loss_vector.append(
-            loss.cpu().detach().numpy() 
-        )  # Append the loss value to the vector
+
+            # Dividi Z sulla prima dimensione in batch
+            for batch_start in range(0, total_nodes, Z_batch_size):
+                batch_end = batch_start + Z_batch_size
+                Z_batch = Z[batch_start:batch_end, :, :]
+                
+                # Training con Z_batch
+                loss = trainer.train(mu, z_0, Z_batch, states, ns)
+                loss_vector.append(loss.cpu().detach().numpy())  # Aggiungi il valore della loss alla lista
 
         if torch.cuda.is_available():
             max_memory_allocated = torch.cuda.max_memory_allocated()

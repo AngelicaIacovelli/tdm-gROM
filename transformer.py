@@ -90,8 +90,18 @@ class TransformerCell(Module):
     The implementation follows https://openreview.net/pdf?id=XctLdNfCmP
     """
 
-    def __init__(self, N_t, N_lat, N_inn, N_g, N_mu, N_neu_MLP_p, N_hid_MLP_p, N_neu_MLP_m, N_hid_MLP_m):
+    def __init__(self, cfg):
         super(TransformerCell, self).__init__()
+
+        N_t = cfg.transformer_architecture.N_timesteps
+        N_lat = cfg.transformer_architecture.N_lat
+        N_inn = cfg.transformer_architecture.N_inn
+        N_g = cfg.transformer_architecture.N_g
+        N_mu = cfg.transformer_architecture.N_mu
+        N_neu_MLP_p = cfg.transformer_architecture.N_neu_MLP_p
+        N_hid_MLP_p = cfg.transformer_architecture.N_hid_MLP_p
+        N_neu_MLP_m = cfg.transformer_architecture.N_neu_MLP_m
+        N_hid_MLP_m = cfg.transformer_architecture.N_hid_MLP_m
 
         self.W_1 = Linear(N_inn, N_lat, bias=False).float()
         self.W_2 = Linear(N_lat, N_inn, bias=False).float()

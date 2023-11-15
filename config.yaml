@@ -59,7 +59,7 @@ model:
 
 
 transformer_architecture:
-  N_t: 41
+  N_timesteps: 41
   N_lat: 60 #why not hpo? 
   N_inn: 10 #hpo Transformer
   N_g: 4 # hpo Transformer
@@ -68,4 +68,7 @@ transformer_architecture:
   N_hid_MLP_p: 3  # hpo Transformer
   N_neu_MLP_m: 30 # hpo Transformer
   N_hid_MLP_m: 3  # hpo Transformer
- 
+  batch_size_Z: 200 # hpo Transformer
+  checkpoints_ckpt_path: "checkpoints_transformer"
+  checkpoints_ckpt_name: "model.pt"
+  num_samples_inlet_flowrate: 30 #hpo Transformer
