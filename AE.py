@@ -248,7 +248,7 @@ class AECell(Module):
             dictionary (key: 'pred_labels', value: decoded features)
 
         """
-        h = self.decoder_nodes_recovery(nodes.data["h"])
+        h = self.decoder_nodes_recovery(nodes.data["proc_node"])
         return {"h": h}
     
     
