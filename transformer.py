@@ -93,43 +93,46 @@ class TransformerCell(Module):
     def __init__(self, cfg):
         super(TransformerCell, self).__init__()
 
-        N_t = cfg.transformer_architecture.N_timesteps
-        N_lat = cfg.transformer_architecture.N_lat
-        N_inn = cfg.transformer_architecture.N_inn
-        N_g = cfg.transformer_architecture.N_g
-        N_mu = cfg.transformer_architecture.N_mu
-        N_neu_MLP_p = cfg.transformer_architecture.N_neu_MLP_p
-        N_hid_MLP_p = cfg.transformer_architecture.N_hid_MLP_p
-        N_neu_MLP_m = cfg.transformer_architecture.N_neu_MLP_m
-        N_hid_MLP_m = cfg.transformer_architecture.N_hid_MLP_m
+        self.N_t = cfg.transformer_architecture.N_timesteps
+        self.N_lat = cfg.architecture.latent_size_AE
+        self.N_inn = cfg.transformer_architecture.N_inn
+        self.N_g = cfg.transformer_architecture.N_g
+        self.N_mu = cfg.transformer_architecture.N_timesteps
+        self.N_neu_MLP_p = cfg.transformer_architecture.N_neu_MLP_p
+        self.N_hid_MLP_p = cfg.transformer_architecture.N_hid_MLP_p
+        self.N_neu_MLP_m = cfg.transformer_architecture.N_neu_MLP_m
+        self.N_hid_MLP_m = cfg.transformer_architecture.N_hid_MLP_m
 
-        self.W_1 = Linear(N_inn, N_lat, bias=False).float()
-        self.W_2 = Linear(N_lat, N_inn, bias=False).float()
-        self.W_3 = Linear(N_lat, N_g, bias=False).float()
+        self.W_1 = Linear(self.N_inn, self.N_lat, bias=False).float()
+        self.W_2 = Linear(self.N_lat, self.N_inn, bias=False).float()
+        self.W_3 = Linear(self.N_lat, self.N_g, bias=False).float()
 
-        self.MLP_p = MLP(N_mu, N_lat, N_neu_MLP_p, N_hid_MLP_p, normalize=False) # True?
-        self.MLP_m = MLP(N_g, N_lat, N_neu_MLP_m, N_hid_MLP_m, normalize=False)
+        self.MLP_p = MLP(self.N_mu, self.N_lat, self.N_neu_MLP_p, self.N_hid_MLP_p, normalize=False) # True?
+        self.MLP_m = MLP(self.N_g, self.N_lat, self.N_neu_MLP_m, self.N_hid_MLP_m, normalize=False)
 
-        self.N_t = N_t
-        self.N_lat = N_lat
         self.N_lat_sqrt = th.sqrt(th.tensor(self.N_lat, dtype=th.float32))
+
+        self.device = "cuda" if th.cuda.is_available() else "cpu"
 
     def forward(self, mu, z_0):
         """
         Forward step
 
         Arguments:
-            mu: vector of dimension N_t, containing flow rates at the inlet. 
-            z_0: vector of dimension N_lat, containing the encoded initial condition.
+            mu: matrix of dimension [N_batch, N_t], containing flow rates at the inlet. 
+            z_0: matrix of dimension [N_batch, N_lat], containing the encoded initial condition.
         Returns:
-            Z_tilde: matrix of dimension [N_t + 1, N_lat], containing all the processed encoded time steps.
+            Z_tilde: tensor of dimension [N_batch, N_t + 1, N_lat], containing all the processed encoded time steps.
         """
 
+        N_batch = z_0.shape[0]
+        z_0 = z_0.unsqueeze(1)
         Z_tilde = self.MLP_p(mu)
-        Z_tilde = th.cat((Z_tilde, z_0), dim = 0)
+        Z_tilde = Z_tilde.unsqueeze(1)
+        Z_tilde = th.cat((Z_tilde, z_0), dim = 1)
         for idx_t in th.arange(2, self.N_t + 1):
-            a = softmax(th.mv(self.W_1(self.W_2(Z_tilde)), Z_tilde[idx_t - 1, :]) / self.N_lat_sqrt, dim = 0)
-            g = th.matmul(a, self.W_3(Z_tilde))
-            Z_tilde = th.cat((Z_tilde, th.reshape(Z_tilde[idx_t - 1, :] + self.MLP_m(g), (1, self.N_lat))), dim = 0)
+            a = softmax(th.bmm(self.W_1(self.W_2(Z_tilde)), Z_tilde[:, idx_t - 1, :].unsqueeze(2)) / self.N_lat_sqrt, dim = 1) # dim=1?
+            g = th.sum(th.mul(self.W_3(Z_tilde), a), dim = 1)
+            Z_tilde = th.cat((Z_tilde, (Z_tilde[:, idx_t - 1, :] + self.MLP_m(g)).unsqueeze(1)), dim = 1)
 
         return Z_tilde

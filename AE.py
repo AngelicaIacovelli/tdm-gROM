@@ -442,6 +442,7 @@ class AECell(Module):
 
         # DECODE
         g.apply_nodes(self.decode_nodes_recovery)
+
         return g.ndata["h"]
     
     def forward(self, g):

@@ -33,7 +33,6 @@ import copy
 from tqdm import tqdm
 import vtk
 
-
 def evaluate_model(cfg, logger, model, params, graphs):
     rollout = Rollout(logger, cfg, model, params, graphs)
     testset = params["test_split"]

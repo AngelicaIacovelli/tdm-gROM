@@ -18,6 +18,7 @@ import psutil
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torch.cuda.amp import GradScaler
+import random
 import time, os
 import numpy as np
 import hydra
@@ -113,12 +114,14 @@ class MGNTrainer:
         params["train_split"] = trainset
         params["test_split"] = testset
 
-        train_graphs = [graphs[gname] for gname in trainset]
-        traindataset = Bloodflow1DDataset(train_graphs, params, trainset)
+        self.train_graphs = [graphs[gname] for gname in trainset]
+        self.test_graphs = [graphs[gname] for gname in testset]
+
+        traindataset = Bloodflow1DDataset(self.train_graphs, params, trainset)
 
         self.stride = traindataset.mint
 
-        # instantiate dataloader # modifica
+        # instantiate dataloader
         self.train_dataloader = DataLoader(
             traindataset,
             batch_size=cfg.training.batch_size,
@@ -181,7 +184,7 @@ class MGNTrainer:
             self.optimizer.step()
 
 
-    def train(self, mu, z_0, Z, states, ns): 
+    def train(self, mu, z_0, Z): 
         """
         Perform one training iteration over one graph. The training is performed
         over multiple timesteps, where the number of timesteps is specified in
@@ -194,23 +197,9 @@ class MGNTrainer:
             loss: loss value.
 
         """
-        # graph = graph.to(self.device)
         self.optimizer.zero_grad()
-        # self.model.zero_memory(graph)
-        loss = 0
-
         pred = self.model(mu, z_0)
-
-        # add prediction by MeshGraphNet to current state
-        new_state = torch.clone(states[-1])
-        new_state[:, 0:2] += pred
-        # print("New state: ", new_state[:, 0:2])
-        # impose exact flow rate at the inlet (to remove it from loss)
-        new_state[imask, 1] = ns[imask, 1, istride]
-        states.append(new_state)
-
-        loss += mse(pred, Z, mask = 1)
-
+        loss = mse(pred[:, 2:, :], Z[:, 1:, :], mask = 1)
         self.backward(loss)
 
         return loss
@@ -257,67 +246,50 @@ def do_training(cfg, dist):
         scaler=scaler,
     )
     
-    # pivotal nodes
-    npnodes = torch.sum(next(iter(trainer.train_dataloader)).ndata["pivotal_nodes"])
+    # allocate variables
+    npnodes = torch.sum(trainer.train_graphs[0].ndata["pivotal_nodes"]).item()
+    ngraphs_train = len(trainer.train_graphs)
+    total_nodes_train = npnodes * ngraphs_train
+    Z = torch.zeros(total_nodes_train, cfg.transformer_architecture.N_timesteps, cfg.architecture.latent_size_AE, device=trainer.device)
+    z_0 = torch.zeros(total_nodes_train, cfg.architecture.latent_size_AE, device=trainer.device)
+    mu = torch.zeros(total_nodes_train, cfg.transformer_architecture.N_timesteps, device=trainer.device)
+    for idx_g in range(ngraphs_train):
+        # read graph
+        graph = trainer.train_graphs[idx_g]
+        graph = graph.to(device)
 
-    ngraphs = len(trainer.train_dataloader)
-    Z = torch.zeros(npnodes * ngraphs, cfg.architecture.latent_size_AE, cfg.transformer_architecture.N_timesteps, device=trainer.device)
-    mu = torch.zeros(npnodes * ngraphs, cfg.transformer_architecture.num_samples_inlet_flowrate, cfg.transformer_architecture.N_timesteps, device=trainer.device)
-    idx_g = 0
-    for graph in trainer.train_dataloader:
-        graph = graph.to(device)       
-
-        ns = graph.ndata["nfeatures"][:, 0:2, 1:]
+        #ns = graph.ndata["nfeatures"][:, 0:2, 1:]
         # create mask to weight boundary nodes more in loss
-        mask = torch.ones(ns[:, :, 0].shape)
-        imask = graph.ndata["inlet_mask"].bool()
+        #mask = torch.ones(ns[:, :, 0].shape)
+        #imask = graph.ndata["inlet_mask"].bool()
 
         states = [graph.ndata["nfeatures"][:, :, 0]]
         graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
-        nnodes = mask.shape[0]
-        nf = torch.zeros(nnodes, 1)
-        nf = nf.to(device)
 
-        idx_t = 0
-        for istride in range(trainer.stride - 1):
-            # inference on AE
+        for istride in range(trainer.stride):
+            # inference on encoder
             ns = graph.ndata["nfeatures"][:, :, istride]
             graph.ndata["current_state"] = ns
 
             with torch.no_grad():
-                Z[idx_g : idx_g + npnodes, :, idx_t] = torch.reshape(AE_model.graph_reduction(graph), (npnodes, cfg.architecture.latent_size_AE))
+                Z[idx_g * npnodes : (idx_g + 1) * npnodes, istride, :] = torch.reshape(AE_model.graph_reduction(graph), (npnodes, cfg.architecture.latent_size_AE))
 
-            # impose boundary condition
-            # print(graph.ndata["nfeatures"].shape)
-            nf[imask, 0] = ns[imask, 1]
-            #mu[idx_g : idx_g + npnodes, :, idx_t] = ???
+        # impose boundary condition
+        mu[idx_g * npnodes : (idx_g + 1) * npnodes, :] = graph.ndata["nfeatures"][0, 1, :]
 
-            idx_t += 1
-
-        idx_g += npnodes
-
-    z_0 = Z[:, :, 0]
+        # impose initial condition
+        z_0[idx_g * npnodes : (idx_g + 1) * npnodes, :] = Z[idx_g * npnodes : (idx_g + 1) * npnodes, 0, :]
 
     # training loop
     start = time.time()
     logger.info("Training started...")
     loss_vector = []  # Initialize an empty list to store loss values
-
-    Z_batch_size = cfg.transformer_architecture.batch_size_Z
-
-    total_nodes = sum(graph.number_of_nodes() for graph in trainer.train_dataloader)
-
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
-        for graph in trainer.train_dataloader:
-
-            # Dividi Z sulla prima dimensione in batch
-            for batch_start in range(0, total_nodes, Z_batch_size):
-                batch_end = batch_start + Z_batch_size
-                Z_batch = Z[batch_start:batch_end, :, :]
-                
-                # Training con Z_batch
-                loss = trainer.train(mu, z_0, Z_batch, states, ns)
-                loss_vector.append(loss.cpu().detach().numpy())  # Aggiungi il valore della loss alla lista
+        # Loop over batches
+        #for idx_g in random.sample(range(ngraphs_train), ngraphs_train):
+        #    loss = trainer.train(mu[idx_g * npnodes : (idx_g + 1) * npnodes, :], z_0[idx_g * npnodes : (idx_g + 1) * npnodes, :], Z[idx_g * npnodes : (idx_g + 1) * npnodes, :, :], states, ns)
+        loss = trainer.train(mu, z_0, Z)
+        loss_vector.append(loss.cpu().detach().numpy())
 
         if torch.cuda.is_available():
             max_memory_allocated = torch.cuda.max_memory_allocated()
@@ -364,7 +336,55 @@ def do_training(cfg, dist):
     ax.legend()
     plt.savefig("loss.png", bbox_inches="tight")
 
-    ep, eq = evaluate_model(cfg, logger, trainer.model, trainer.params, trainer.graphs)
+    # evaluate model
+    ep = 0
+    eq = 0
+    ngraphs_test = len(trainer.test_graphs)
+    for idx_g in range(ngraphs_test):
+        # read graph
+        graph = trainer.test_graphs[idx_g]
+        graph = graph.to(device)
+
+        #ns = graph.ndata["nfeatures"][:, 0:2, 1:]
+        # create mask to weight boundary nodes more in loss
+        #mask = torch.ones(ns[:, :, 0].shape)
+        #imask = graph.ndata["inlet_mask"].bool()
+
+        states = [graph.ndata["nfeatures"][:, :, 0]]
+        graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
+        
+        # numerical simulation in time with transformer
+        ns = graph.ndata["nfeatures"][:, :, 0]
+        graph.ndata["current_state"] = ns
+        with torch.no_grad():
+            mu = graph.ndata["nfeatures"][0, 1, :].unsqueeze(0).repeat(npnodes, 1)
+            z_0 = torch.reshape(AE_model.graph_reduction(graph), (npnodes, cfg.architecture.latent_size_AE))
+            pred = trainer.model(mu, z_0)[:, 1:, :]
+        
+        # inference on decoder
+        decoded = torch.zeros(graph.number_of_nodes(), cfg.architecture.out_size, cfg.transformer_architecture.N_timesteps, device=trainer.device)
+        for istride in range(trainer.stride):
+            ns = graph.ndata["nfeatures"][:, :, istride]
+            graph.ndata["current_state"] = ns
+            with torch.no_grad():
+                dummy = AE_model.graph_reduction(graph) # Why?
+                decoded[:, :, istride] = AE_model.graph_recovery(graph, torch.reshape(pred[:, istride, :], (-1,)))
+        decoded[:, 0, :] = decoded[:, 0, :] * trainer.params["statistics"]["pressure"]["stdv"] + trainer.params["statistics"]["pressure"]["mean"]
+        decoded[:, 1, :] = decoded[:, 1, :] * trainer.params["statistics"]["flowrate"]["stdv"] + trainer.params["statistics"]["flowrate"]["mean"]
+        graph.ndata["nfeatures"][:, 0, :] = graph.ndata["nfeatures"][:, 0, :] * trainer.params["statistics"]["pressure"]["stdv"] + trainer.params["statistics"]["pressure"]["mean"]        
+        graph.ndata["nfeatures"][:, 1, :] = graph.ndata["nfeatures"][:, 1, :] * trainer.params["statistics"]["flowrate"]["stdv"] + trainer.params["statistics"]["flowrate"]["mean"]
+        diff = decoded - graph.ndata["nfeatures"][:, 0:2, :]
+        errs = torch.sum(torch.sum(diff ** 2, axis=0), axis=1)
+        errs = errs / torch.sum(torch.sum(graph.ndata["nfeatures"][:, 0:2, :] ** 2, axis=0), axis=1)
+        errs = torch.sqrt(errs)
+        ep += errs[0] 
+        eq += errs[1]
+
+    ep = ep / ngraphs_test
+    eq = eq / ngraphs_test
+
+    print((ep + eq) / 2)
+    
     return (ep + eq) / 2
 
 
