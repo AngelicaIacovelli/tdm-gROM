@@ -385,6 +385,48 @@ def do_training(cfg, dist):
 
     print((ep + eq) / 2)
     
+    # PLOT
+    p_pred_values = []
+    q_pred_values = []
+    p_exact_values = []
+    q_exact_values = []
+
+    bm = graph.ndata["branch_mask"].bool()
+
+    pred = decoded #??
+    exact = graph.ndata["nfeatures"][:, 0:2, :] #??
+    idx = 5
+
+    nsol = pred.shape[2]
+    if torch.cuda.is_available():
+        for isol in range(nsol):
+            # if load[isol] == 0:
+            p_pred_values.append(pred[:, 0, isol][idx].cpu().detach().numpy())
+            q_pred_values.append(pred[:, 1, isol][idx].cpu().detach().numpy())
+            p_exact_values.append(exact[:, 0, isol][idx].cpu().detach().numpy())
+            q_exact_values.append(exact[:, 1, isol][idx].cpu().detach().numpy())
+    else:
+        for isol in range(nsol):
+            # if load[isol] == 0:
+            p_pred_values.append(pred[bm, 0, isol][idx])
+            q_pred_values.append(pred[bm, 1, isol][idx])
+            p_exact_values.append(exact[bm, 0, isol][idx])
+            q_exact_values.append(exact[bm, 1, isol][idx])
+
+    plt.figure()
+    ax = plt.axes()
+    ax.plot(p_pred_values, label="pred")
+    ax.plot(p_exact_values, label="exact")
+    ax.legend()
+    plt.savefig("pressure.png", bbox_inches="tight")
+
+    plt.figure()
+    ax = plt.axes()
+    ax.plot(q_pred_values, label="pred")
+    ax.plot(q_exact_values, label="exact")
+    ax.legend()
+    plt.savefig("flowrate.png", bbox_inches="tight")
+
     return (ep + eq) / 2
 
 
