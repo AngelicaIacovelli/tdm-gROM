@@ -66,8 +66,11 @@ class MLP(Module):
             result of forward step
 
         """
+
         f = self.input(inp)
+        # print("After input layer:", f)
         f = F.leaky_relu(f)
+        # print("After leaky_relu:", f)
 
         for i in range(self.n_h_layers):
             f = self.hidden_layers[i](f)
@@ -120,7 +123,7 @@ class AECell(Module):
             cfg.architecture.number_hidden_layers_mlp,
         )
         self.decoder_nodes_recovery = MLP(
-            cfg.architecture.latent_size_AE,
+            cfg.architecture.latent_size_gnn,
             cfg.architecture.out_size,
             cfg.architecture.latent_size_mlp,
             cfg.architecture.number_hidden_layers_mlp,
@@ -174,7 +177,9 @@ class AECell(Module):
 
         """
         features = nodes.data["current_state"]
+        # print("Pre MLP", features)
         enc_features = self.encoder_nodes_reduction(features)
+        # print("Post MLP",enc_features)
         return {"proc_node": enc_features}
     
     def encode_nodes_recovery(self, nodes):
@@ -234,6 +239,8 @@ class AECell(Module):
 
         """
         h = self.decoder_nodes_reduction(nodes.data["proc_node"])
+        # print(nodes.data["proc_node"])
+        # print(h)
         return {"h": h}
     
     
