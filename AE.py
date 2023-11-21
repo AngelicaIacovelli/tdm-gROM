@@ -177,9 +177,9 @@ class AECell(Module):
 
         """
         features = nodes.data["current_state"]
-        # print("Pre MLP", features)
+        # print("ENC NODES RED: Pre MLP", features)
         enc_features = self.encoder_nodes_reduction(features)
-        # print("Post MLP",enc_features)
+        # print("ENC NODES RED: Post MLP", enc_features)
         return {"proc_node": enc_features}
     
     def encode_nodes_recovery(self, nodes):
@@ -194,7 +194,9 @@ class AECell(Module):
 
         """
         features = nodes.data["R"]
+        # print("ENC EDGES REC: Pre MLP", features)
         enc_features = self.encoder_nodes_recovery(features)
+        # print("ENC EDGES REC: Post MLP", enc_features)
         return {"proc_node": enc_features}
 
     def encode_edges_reduction(self, edges):
@@ -209,7 +211,9 @@ class AECell(Module):
 
         """
         features = edges.data["efeatures"]
+        # print("ENC EDGES RED: Pre MLP", features)
         enc_features = self.encoder_edges_reduction(features)
+        # print("ENC EDGES RED: Post MLP", enc_features)
         return {"proc_edge": enc_features}
     
     def encode_edges_recovery(self, edges):
@@ -224,7 +228,9 @@ class AECell(Module):
 
         """
         features = edges.data["efeatures"]
+        # print("ENC EDGES REC: Pre MLP", features)        
         enc_features = self.encoder_edges_recovery(features)
+        # print("ENC EDGES REC: Post MLP", enc_features)
         return {"proc_edge": enc_features}
 
     def decode_nodes_reduction(self, nodes):
@@ -238,9 +244,9 @@ class AECell(Module):
             dictionary (key: 'pred_labels', value: decoded features)
 
         """
+        # print("DEC NODES RED: Pre MLP", nodes.data["proc_node"])
         h = self.decoder_nodes_reduction(nodes.data["proc_node"])
-        # print(nodes.data["proc_node"])
-        # print(h)
+        # print("DEC NODES RED: Post MLP", h)
         return {"h": h}
     
     
@@ -255,7 +261,9 @@ class AECell(Module):
             dictionary (key: 'pred_labels', value: decoded features)
 
         """
+        # print("DEC NODES REC: Pre MLP", nodes.data["proc_node"])
         h = self.decoder_nodes_recovery(nodes.data["proc_node"])
+        # print("DEC NODES REC: Post MLP", h)
         return {"h": h}
     
     
@@ -275,11 +283,15 @@ class AECell(Module):
         f2 = edges.src['proc_node']
         f3 = edges.dst['proc_node']
 
+        #print("Pre MLP f1", f1)
+        #print("Pre MLP f2", f2)
+        #print("Pre MLP f3", f3)
+
         proc_edge = self.processor_edges_reduction[index](th.cat((f1, f2, f3), 1))
-        # print(f1.shape)
-        # print(proc_edge.shape)
-        # add residual connection
         proc_edge = proc_edge + f1
+
+        #print("Post MLP", proc_edge)
+
         return {'proc_edge': proc_edge}
     
     
@@ -318,9 +330,16 @@ class AECell(Module):
         """
         f1 = nodes.data['proc_node']
         f2 = nodes.data['pe_sum']
+
+        #print("NODES: Pre MLP f1", f1)
+        #print("NODES: Pre MLP f2", f2)
+
         proc_node = self.processor_nodes_reduction[index](th.cat((f1, f2), 1))
         # add residual connection
         proc_node = proc_node + f1
+
+        #print("NODES: Post MLP", proc_node)
+
         return {'proc_node': proc_node}
 
     def process_nodes_recovery(self, nodes, index):
@@ -403,28 +422,29 @@ class AECell(Module):
         # print(npnodes)
         H = th.reshape(z,(npnodes,-1))
 
+
+        tensor = g.ndata["pivotal_weights"]
+        elements_inf = th.isinf(tensor)
+        # Sostituisci gli elementi "inf" con il massimo per 100
+        tensor[elements_inf] = 150.4765*100
+        g.ndata["pivotal_weights"] = tensor
+
         R = th.zeros((g.ndata["pivotal_weights"].shape[0], 
                       H.shape[1]), device=z.device)
 
         offset_h = 0
         offset_w = 0
+        # print("Pre R: ", R)
         for single_graph in graphs:
             W = single_graph.ndata["pivotal_weights"]
             npnodes_per_graph = W.shape[1]
             single_H = H[offset_h:offset_h + npnodes_per_graph,:]
+            # print("W: ", W)
             w_norm = th.sum(W,axis=1).unsqueeze(axis=1)
             R[offset_w:offset_w + W.shape[0]] = th.div(th.matmul(W,single_H), w_norm)
             offset_w += W.shape[0]
             offset_h += npnodes_per_graph
-            
-        # W = g.ndata["pivotal_weights"] 
-
-
-        # w_norm = th.sum(W,axis=1).unsqueeze(axis=1)
-        # # print(th.matmul(W,H).shape)
-        # # print(w_norm.shape)
-        # R = th.div(th.matmul(W,H), w_norm)
-        # # R = th.matmul(W,H)/w_norm
+        # print("Post R: ", R)
 
         g.ndata["R"] = R
 

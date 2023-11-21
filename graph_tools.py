@@ -638,5 +638,5 @@ def generate_graph(point_data, points, edges1, edges2, add_boundary_edges, rcr_v
 
         # Aggiungiamo la feature "shortest_path" al grafo
         graph.ndata["pivotal_weights"] = shortest_paths**(-2)
-        
+
     return graph

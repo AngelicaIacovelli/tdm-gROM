@@ -214,6 +214,8 @@ class MGNTrainer:
             ns = graph.ndata["nfeatures"][:, :, istride]
             graph.ndata["current_state"] = ns
             pred = self.model(graph)
+            #print(pred)
+            # print(pred.shape)
             loss = mse(pred, ns[:,0:2], mask = 1)
             self.backward(loss)
 

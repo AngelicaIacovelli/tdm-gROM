@@ -21,8 +21,8 @@ scheduler:
 
 training:
   batch_size: 16 #optimize LSTM #optimize AE
-  epochs: 1500 #500
-  geometries: "test" #"healthy" for LSTM, "test" for AE
+  epochs: 500
+  geometries: "test" #"healthy" for LSTM, "test" for AE --------------------
   train_test_split: 0.9
   loss_weight_boundary_nodes: 37 #optimize LSTM
   output_interval: 50
@@ -41,7 +41,7 @@ testing:
 
 architecture:
   hidden_dim: 58 #optimize LSTM
-  in_feats: 17 #put 18 for LSTM and 17 for AE
+  in_feats: 17 #put 18 for LSTM and 17 for AE --------------------
   edge_feats: 9
   latent_size_gnn: 63 #optimize LSTM #optimize AE
   latent_size_mlp: 54 #optimize LSTM #optimize AE
@@ -55,7 +55,7 @@ hyperparameter_optimization:
   runs: 100
 
 model:
-  LSTM: "False" # "True" for LSTM model, "False" for Transformer 
+  LSTM: "False" # "True" for LSTM model, "False" for Transformer --------------------
 
 
 transformer_architecture:
