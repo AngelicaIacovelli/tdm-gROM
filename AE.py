@@ -428,6 +428,13 @@ class AECell(Module):
         # Sostituisci gli elementi "inf" con il massimo per 100
         tensor[elements_inf] = 150.4765*100
         g.ndata["pivotal_weights"] = tensor
+        #sostituisci con valori H i valori nan di R, nel ciclo for
+        #indices = []
+        #for index in range(g.ndata["pivotal_nodes"].shape[0]):
+        #    if (g.ndata["pivotal_nodes"][index] == 1):
+        #        indices.append(index)
+        #print(indices)
+        #print(len(indices))
 
         R = th.zeros((g.ndata["pivotal_weights"].shape[0], 
                       H.shape[1]), device=z.device)
@@ -442,6 +449,10 @@ class AECell(Module):
             # print("W: ", W)
             w_norm = th.sum(W,axis=1).unsqueeze(axis=1)
             R[offset_w:offset_w + W.shape[0]] = th.div(th.matmul(W,single_H), w_norm)
+            #print("R pre: ", R[indices, :])
+            #R[indices, :] = H
+            #print("R post: ", R)
+            #print("NAN: ", th.nonzero(th.isnan(R)))
             offset_w += W.shape[0]
             offset_h += npnodes_per_graph
         # print("Post R: ", R)

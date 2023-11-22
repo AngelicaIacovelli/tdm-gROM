@@ -27,7 +27,7 @@ def objective(config, cfg):
 
     metric = do_training(cfg, dist).cpu().detach().numpy()
     
-    train.report({"Loss": float(metric)})  # Report to Tune
+    train.report({"Average_error": float(metric)})  # Report to Tune
 
 @hydra.main(version_base=None, config_path=".", config_name="config")
 def main(cfg: DictConfig):
@@ -40,10 +40,10 @@ def main(cfg: DictConfig):
         "lr_decay": tune.loguniform(1e-3, 1e-1), 
         "N_inn": tune.randint(1, 200),
         "N_g": tune.randint(1, 200),
-        "N_neu_MLP_p": tune.randint(1, 5),
-        "N_hid_MLP_p": tune.randint(1, 5),
-        "N_neu_MLP_m": tune.randint(1, 5),
-        "N_hid_MLP_m": tune.randint(1, 5),
+        "N_neu_MLP_p": tune.randint(1, 10),
+        "N_hid_MLP_p": tune.randint(1, 10),
+        "N_neu_MLP_m": tune.randint(1, 10),
+        "N_hid_MLP_m": tune.randint(1, 10),
     }
     algo = OptunaSearch()  
 
@@ -68,7 +68,7 @@ def main(cfg: DictConfig):
         tuner = tune.Tuner(  
             trainable = objective_with_gpu,
             tune_config=tune.TuneConfig(
-                metric="Loss", 
+                metric="Average_error", 
                 mode="min", 
                 search_alg=algo,
                 num_samples=cfg.hyperparameter_optimization.runs

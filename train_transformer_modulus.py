@@ -258,11 +258,6 @@ def do_training(cfg, dist):
         graph = trainer.train_graphs[idx_g]
         graph = graph.to(device)
 
-        #ns = graph.ndata["nfeatures"][:, 0:2, 1:]
-        # create mask to weight boundary nodes more in loss
-        #mask = torch.ones(ns[:, :, 0].shape)
-        #imask = graph.ndata["inlet_mask"].bool()
-
         states = [graph.ndata["nfeatures"][:, :, 0]]
         graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
 
@@ -345,11 +340,6 @@ def do_training(cfg, dist):
         graph = trainer.test_graphs[idx_g]
         graph = graph.to(device)
 
-        #ns = graph.ndata["nfeatures"][:, 0:2, 1:]
-        # create mask to weight boundary nodes more in loss
-        #mask = torch.ones(ns[:, :, 0].shape)
-        #imask = graph.ndata["inlet_mask"].bool()
-
         states = [graph.ndata["nfeatures"][:, :, 0]]
         graph.edata["efeatures"] = graph.edata["efeatures"].squeeze()
         
@@ -367,7 +357,6 @@ def do_training(cfg, dist):
             ns = graph.ndata["nfeatures"][:, :, istride]
             graph.ndata["current_state"] = ns
             with torch.no_grad():
-                dummy = AE_model.graph_reduction(graph) # Why?
                 decoded[:, :, istride] = AE_model.graph_recovery(graph, torch.reshape(pred[:, istride, :], (-1,)))
         decoded[:, 0, :] = decoded[:, 0, :] * trainer.params["statistics"]["pressure"]["stdv"] + trainer.params["statistics"]["pressure"]["mean"]
         decoded[:, 1, :] = decoded[:, 1, :] * trainer.params["statistics"]["flowrate"]["stdv"] + trainer.params["statistics"]["flowrate"]["mean"]
@@ -391,10 +380,8 @@ def do_training(cfg, dist):
     p_exact_values = []
     q_exact_values = []
 
-    bm = graph.ndata["branch_mask"].bool()
-
-    pred = decoded #??
-    exact = graph.ndata["nfeatures"][:, 0:2, :] #??
+    pred = decoded
+    exact = graph.ndata["nfeatures"][:, 0:2, :]
     idx = 5
 
     nsol = pred.shape[2]
@@ -408,10 +395,10 @@ def do_training(cfg, dist):
     else:
         for isol in range(nsol):
             # if load[isol] == 0:
-            p_pred_values.append(pred[bm, 0, isol][idx])
-            q_pred_values.append(pred[bm, 1, isol][idx])
-            p_exact_values.append(exact[bm, 0, isol][idx])
-            q_exact_values.append(exact[bm, 1, isol][idx])
+            p_pred_values.append(pred[:, 0, isol][idx])
+            q_pred_values.append(pred[:, 1, isol][idx])
+            p_exact_values.append(exact[:, 0, isol][idx])
+            q_exact_values.append(exact[:, 1, isol][idx])
 
     plt.figure()
     ax = plt.axes()

@@ -54,7 +54,7 @@ def main(cfg: DictConfig):
     objective_with_gpu = tune.with_resources(objective_cfg, {"gpu": 1})
 
     storage_path = os.path.expanduser("/home/aiacovelli/ray_results")
-    exp_name = "tune_fault_tolerance_guide"
+    exp_name = "hpo_AE"
     path = os.path.join(storage_path, exp_name)
 
     if tune.Tuner.can_restore(path):
