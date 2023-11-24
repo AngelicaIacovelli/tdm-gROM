@@ -133,8 +133,6 @@ class TransformerCell(Module):
         Z_tilde = Z_tilde.unsqueeze(1)
         Z_tilde = th.cat((Z_tilde, z_0), dim = 1)
         for idx_t in th.arange(2, N_t + 1):
-            a = []
-            g = []
             for idx_h in range(self.N_heads):
                 a = softmax(th.bmm(self.W_1[idx_h](self.W_2[idx_h](Z_tilde)), Z_tilde[:, idx_t - 1, :].unsqueeze(2)) / self.N_lat_sqrt, dim = 1)
                 if idx_h == 0:
