@@ -61,17 +61,6 @@ def main(cfg: DictConfig):
     torch.manual_seed(seed)
     random.seed(seed)
     np.random.seed(seed)
-
-    # Parameters.
-    N_t = 41
-    N_lat = 60
-    N_inn = 10 #hpo
-    N_g = 4 # hpo
-    N_mu = 30
-    N_neu_MLP_p = 30 # hpo
-    N_hid_MLP_p = 3  # hpo
-    N_neu_MLP_m = 30 # hpo
-    N_hid_MLP_m = 3  # hpo
     
     # instantiate the model
     model = TransformerCell(cfg)
