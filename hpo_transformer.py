@@ -5,7 +5,7 @@ from ray.train import Checkpoint
 from ray.tune.search.optuna import OptunaSearch
 import hydra
 from omegaconf import DictConfig
-from train_AE import do_training
+from train_transformer_modulus import do_training
 import os
 from modulus.distributed.manager import DistributedManager
 
