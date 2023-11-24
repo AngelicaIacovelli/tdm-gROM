@@ -198,9 +198,23 @@ class MGNTrainer:
 
         """
         self.optimizer.zero_grad()
+<<<<<<< Updated upstream
         pred = self.model(mu, z_0)
         loss = mse(pred[:, 2:, :], Z[:, 1:, :], mask = 1)
         self.backward(loss)
+=======
+
+        # Incremental loss function
+        for idx_t in range(2, self.cfg.transformer_architecture.N_timesteps):
+            loss = self.cfg.transformer_architecture.threshold + 1.
+            while (loss > self.cfg.transformer_architecture.threshold):
+                pred = self.model(mu, z_0, idx_t)
+                loss = mse(pred[:, 2:, :], Z[:, 1:idx_t, :], mask = 1)
+                loss.backward()
+
+        self.optimizer.step()
+        #self.backward(loss)
+>>>>>>> Stashed changes
 
         return loss
 
