@@ -96,13 +96,13 @@ def main(cfg: DictConfig):
         # enable train mode
         model.train()
 
-        # Zero the parameter gradients
-        optimizer.zero_grad()
-
         # Incremental loss function
         for idx_t in range(2, cfg.transformer_architecture.N_timesteps):
             loss = cfg.transformer_architecture.threshold + 1.
             while (loss > cfg.transformer_architecture.threshold):
+                # Zero the parameter gradients
+                optimizer.zero_grad()
+
                 # Forward pass
                 Z_tilde = model(mu, z_0, idx_t)
 
@@ -112,10 +112,10 @@ def main(cfg: DictConfig):
                 # Backpropagation and optimization
                 loss.backward()
 
-                print(f'Epoch {epoch + 1}, Increment: {idx_t}, Loss: {loss.item()}')
+                # Update optimizer
+                optimizer.step()
 
-        # Update optimizer
-        optimizer.step()
+                print(f'Epoch {epoch + 1}, Increment: {idx_t}, Loss: {loss.item()}')
 
         # Adjust learning rate using the scheduler
         scheduler.step()
