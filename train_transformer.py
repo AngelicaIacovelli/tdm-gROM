@@ -74,11 +74,7 @@ def main(cfg: DictConfig):
     N_hid_MLP_m = 3  # hpo
     
     # instantiate the model
-<<<<<<< Updated upstream
-    model = TransformerCell(N_t, N_lat, N_inn, N_g, N_mu, N_neu_MLP_p, N_hid_MLP_p, N_neu_MLP_m, N_hid_MLP_m)
-=======
     model = TransformerCell(cfg)
->>>>>>> Stashed changes
 
     # instantiate loss, optimizer, and scheduler
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.scheduler.lr)
@@ -89,14 +85,10 @@ def main(cfg: DictConfig):
     )
 
     # simple dataset
-<<<<<<< Updated upstream
-    mu, z_0, Z = torch.randn((1, N_mu)), torch.randn((1, N_lat)), torch.randn((N_t + 1, N_lat))
-=======
     mu  = torch.randn((cfg.training.batch_size, cfg.transformer_architecture.N_timesteps))
     z_0 = torch.randn((cfg.training.batch_size, cfg.architecture.latent_size_AE))
     Z   = torch.randn((cfg.training.batch_size, cfg.transformer_architecture.N_timesteps, cfg.architecture.latent_size_AE))
     Z[:, 0, :] = z_0
->>>>>>> Stashed changes
 
     start_time = time.time()
 
@@ -107,16 +99,6 @@ def main(cfg: DictConfig):
         # Zero the parameter gradients
         optimizer.zero_grad()
 
-<<<<<<< Updated upstream
-        # Forward pass
-        Z_tilde = model(mu, z_0)
-
-        # Calculate the loss
-        loss = mse(Z_tilde, Z, mask = 1)
-
-        # Backpropagation and optimization
-        loss.backward()
-=======
         # Incremental loss function
         for idx_t in range(2, cfg.transformer_architecture.N_timesteps):
             loss = cfg.transformer_architecture.threshold + 1.
@@ -133,17 +115,11 @@ def main(cfg: DictConfig):
                 print(f'Epoch {epoch + 1}, Increment: {idx_t}, Loss: {loss.item()}')
 
         # Update optimizer
->>>>>>> Stashed changes
         optimizer.step()
 
         # Adjust learning rate using the scheduler
         scheduler.step()
 
-<<<<<<< Updated upstream
-        print(f'Epoch {epoch + 1}, Loss: {loss.item()}')
-
-=======
->>>>>>> Stashed changes
     print(f"Elapsed time: {time.time() - start_time:.4f} seconds")
 
 if __name__ == "__main__":

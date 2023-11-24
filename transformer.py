@@ -86,21 +86,14 @@ class TransformerCell(Module):
     Transformer cell.
 
     This class computes the temporal evolution of a set of latent variables
-<<<<<<< Updated upstream
-    while using single attention head.
-=======
     while using multi attention head.
->>>>>>> Stashed changes
     The implementation follows https://openreview.net/pdf?id=XctLdNfCmP
     """
 
     def __init__(self, cfg):
         super(TransformerCell, self).__init__()
 
-<<<<<<< Updated upstream
-=======
         self.N_heads = cfg.transformer_architecture.N_heads
->>>>>>> Stashed changes
         self.N_t = cfg.transformer_architecture.N_timesteps
         self.N_lat = cfg.architecture.latent_size_AE
         self.N_inn = cfg.transformer_architecture.N_inn
@@ -111,41 +104,25 @@ class TransformerCell(Module):
         self.N_neu_MLP_m = cfg.transformer_architecture.N_neu_MLP_m
         self.N_hid_MLP_m = cfg.transformer_architecture.N_hid_MLP_m
 
-<<<<<<< Updated upstream
-        self.W_1 = Linear(self.N_inn, self.N_lat, bias=False).float()
-        self.W_2 = Linear(self.N_lat, self.N_inn, bias=False).float()
-        self.W_3 = Linear(self.N_lat, self.N_g, bias=False).float()
-
-        self.MLP_p = MLP(self.N_mu, self.N_lat, self.N_neu_MLP_p, self.N_hid_MLP_p, normalize=False) # True?
-        self.MLP_m = MLP(self.N_g, self.N_lat, self.N_neu_MLP_m, self.N_hid_MLP_m, normalize=False)
-=======
         self.W_1 = th.nn.ModuleList([Linear(self.N_inn, self.N_lat, bias=False).float() for _ in range(self.N_heads)])
         self.W_2 = th.nn.ModuleList([Linear(self.N_lat, self.N_inn, bias=False).float() for _ in range(self.N_heads)])
         self.W_3 = th.nn.ModuleList([Linear(self.N_lat, self.N_g, bias=False).float() for _ in range(self.N_heads)])
 
         self.MLP_p = MLP(self.N_mu, self.N_lat, self.N_neu_MLP_p, self.N_hid_MLP_p, normalize=False) # True?
         self.MLP_m = MLP(self.N_heads * self.N_g, self.N_lat, self.N_neu_MLP_m, self.N_hid_MLP_m, normalize=False)
->>>>>>> Stashed changes
 
         self.N_lat_sqrt = th.sqrt(th.tensor(self.N_lat, dtype=th.float32))
 
         self.device = "cuda" if th.cuda.is_available() else "cpu"
 
-<<<<<<< Updated upstream
-    def forward(self, mu, z_0):
-=======
     def forward(self, mu, z_0, N_t):
->>>>>>> Stashed changes
         """
         Forward step
 
         Arguments:
             mu: matrix of dimension [N_batch, N_t], containing flow rates at the inlet. 
             z_0: matrix of dimension [N_batch, N_lat], containing the encoded initial condition.
-<<<<<<< Updated upstream
-=======
             N_t: number of timesteps for loss incremental training (N_t = self.N_t to train over the whole simulation).
->>>>>>> Stashed changes
         Returns:
             Z_tilde: tensor of dimension [N_batch, N_t + 1, N_lat], containing all the processed encoded time steps.
         """
@@ -155,11 +132,6 @@ class TransformerCell(Module):
         Z_tilde = self.MLP_p(mu)
         Z_tilde = Z_tilde.unsqueeze(1)
         Z_tilde = th.cat((Z_tilde, z_0), dim = 1)
-<<<<<<< Updated upstream
-        for idx_t in th.arange(2, self.N_t + 1):
-            a = softmax(th.bmm(self.W_1(self.W_2(Z_tilde)), Z_tilde[:, idx_t - 1, :].unsqueeze(2)) / self.N_lat_sqrt, dim = 1) # dim=1?
-            g = th.sum(th.mul(self.W_3(Z_tilde), a), dim = 1)
-=======
         for idx_t in th.arange(2, N_t + 1):
             a = []
             g = []
@@ -169,7 +141,6 @@ class TransformerCell(Module):
                     g = th.sum(th.mul(self.W_3[idx_h](Z_tilde), a), dim = 1)
                 else:
                     g = th.cat((g, th.sum(th.mul(self.W_3[idx_h](Z_tilde), a), dim = 1)), dim = 1)
->>>>>>> Stashed changes
             Z_tilde = th.cat((Z_tilde, (Z_tilde[:, idx_t - 1, :] + self.MLP_m(g)).unsqueeze(1)), dim = 1)
 
         return Z_tilde
