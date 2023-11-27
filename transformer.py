@@ -42,6 +42,7 @@ class MLP(Module):
 
         """
         super().__init__()
+        
         seed = 1
         th.manual_seed(seed)
         random.seed(seed)

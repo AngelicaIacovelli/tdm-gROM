@@ -9,6 +9,7 @@ from torch.nn import Linear
 import torch.nn.functional as F
 import numpy as np
 import dgl.function as fn
+import random
 
 # import graph1d.generate_normalized_graphs as nz
 # import json
@@ -44,6 +45,12 @@ class MLP(Module):
 
         """
         super().__init__()
+
+        seed = 1
+        th.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
+
         self.input = Linear(in_feats, latent_space, bias=True).float()
         self.output = Linear(latent_space, out_feats, bias=True).float()
         self.n_h_layers = n_h_layers
@@ -95,6 +102,11 @@ class GLSTMCell(Module):
 
     def __init__(self, cfg):
         super(GLSTMCell, self).__init__()
+
+        seed = 1
+        th.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
 
         self.encoder_nodes = MLP(
             cfg.architecture.in_feats,
