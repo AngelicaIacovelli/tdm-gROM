@@ -8,6 +8,8 @@ from omegaconf import DictConfig
 from train import do_training
 import os
 from modulus.distributed.manager import DistributedManager
+import random
+import numpy as np
 
 # initialize distributed manager
 DistributedManager.initialize()
@@ -32,6 +34,11 @@ def objective(config, cfg):
 @hydra.main(version_base=None, config_path=".", config_name="config")
 def main(cfg: DictConfig):
 
+    seed = 1
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    
     cfg.work_directory = os.getcwd()
     cfg.training.output_interval = cfg.training.epochs - 1 
 

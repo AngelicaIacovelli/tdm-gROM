@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import numpy as np
 import dgl.function as fn
 import dgl
-
+import random
 
 
 class MLP(Module):
@@ -41,6 +41,11 @@ class MLP(Module):
                               in last layer. Default -> true
 
         """
+        seed = 1
+        th.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
+        
         super().__init__()
         self.input = Linear(in_feats, latent_space, bias=True).float()
         self.output = Linear(latent_space, out_feats, bias=True).float()

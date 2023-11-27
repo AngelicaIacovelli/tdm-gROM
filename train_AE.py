@@ -21,6 +21,7 @@ from torch.cuda.amp import GradScaler
 import time, os
 import numpy as np
 import hydra
+import random
 from inference import evaluate_model
 
 from modulus.distributed.manager import DistributedManager
@@ -302,6 +303,11 @@ def do_training(cfg, dist):
 
 @hydra.main(version_base=None, config_path=".", config_name="config")
 def main(cfg: DictConfig):
+    seed = 1
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+
     # initialize distributed manager
     DistributedManager.initialize()
     dist = DistributedManager()

@@ -9,6 +9,7 @@ import torch.nn.functional as F
 import numpy as np
 import dgl.function as fn
 import dgl
+import random
 
 class MLP(Module):
     """
@@ -41,6 +42,11 @@ class MLP(Module):
 
         """
         super().__init__()
+        seed = 1
+        th.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
+
         self.input = Linear(in_feats, latent_space, bias=True).float()
         self.output = Linear(latent_space, out_feats, bias=True).float()
         self.n_h_layers = n_h_layers
@@ -92,6 +98,12 @@ class TransformerCell(Module):
 
     def __init__(self, cfg):
         super(TransformerCell, self).__init__()
+        super().__init__()
+        
+        seed = 1
+        th.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
 
         self.N_heads = cfg.transformer_architecture.N_heads
         self.N_t = cfg.transformer_architecture.N_timesteps
