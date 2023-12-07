@@ -15,9 +15,24 @@
 
 work_directory: "."
 
+hyperparameter_optimization:
+  runs: 100
+
+model:
+  LSTM: "False" # "True" for LSTM model, "False" for Transformer --------------------
+
+performance:
+  amp: False
+  jit: False
+
+testing:
+  graph: "s0095_0001.21.0.grph"
+
+# LSTM and AE 
+
 scheduler:
-  lr: 0.0111093 #optimize LSTM #optimize AE + TRANSFORMER
-  lr_decay: 0.0540696 #optimize LSTM #optimize AE + TRANSFORMER
+  lr: 0.00020325566074545003 #optimize LSTM #optimize AE 
+  lr_decay: 0.0.003746192435115448 #optimize LSTM #optimize AE 
 
 training:
   batch_size: 10 #optimize LSTM #optimize AE
@@ -32,13 +47,6 @@ checkpoints:
   ckpt_path: "checkpoints"
   ckpt_name: "model.pt"
 
-performance:
-  amp: False
-  jit: False
-
-testing:
-  graph: "s0095_0001.21.0.grph"
-
 architecture:
   hidden_dim: 58 #optimize LSTM
   in_feats: 17 #put 18 for LSTM and 17 for AE --------------------
@@ -51,14 +59,13 @@ architecture:
   process_iterations: 0 #optimize LSTM #optimize AE
   latent_size_AE: 41 #optimize AE
 
-hyperparameter_optimization:
-  runs: 100
 
-model:
-  LSTM: "False" # "True" for LSTM model, "False" for Transformer --------------------
 
+# TRANSFORMER
 
 transformer_architecture:
+  lr: 0.0111093
+  lr_decay: 0.0540696
   epochs: 10000
   threshold: 1000000.0
   N_heads: 3 #hpo Transformer

@@ -18,8 +18,8 @@ dist = DistributedManager()
 def objective(config, cfg):  
     cfg.checkpoints.ckpt_path = os.getcwd() + "/" + cfg.checkpoints.ckpt_path 
     
-    cfg.scheduler.lr = config["lr"] 
-    cfg.scheduler.lr_decay = config["lr_decay"]
+    cfg.transformer_architecture.lr = config["lr"] 
+    cfg.transformer_architecture.lr_decay = config["lr_decay"]
     cfg.transformer_architecture.N_heads = config["N_heads"]
     cfg.transformer_architecture.N_inn = config["N_inn"]
     cfg.transformer_architecture.N_g = config["N_g"]

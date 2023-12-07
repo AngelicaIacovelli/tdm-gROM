@@ -144,11 +144,11 @@ class MGNTrainer:
         self.model.train()
 
         # instantiate loss, optimizer, and scheduler
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=cfg.scheduler.lr)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=cfg.transformer_architecture.lr)
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             self.optimizer,
-            T_max=cfg.training.epochs,
-            eta_min=cfg.scheduler.lr * cfg.scheduler.lr_decay,
+            T_max=cfg.transformer_architecture.epochs,
+            eta_min=cfg.transformer_architecture.lr * cfg.transformer_architecture.lr_decay,
         )
         self.scaler = GradScaler()
 
@@ -290,7 +290,7 @@ def do_training(cfg, dist):
     start = time.time()
     logger.info("Training started...")
     loss_vector = []  # Initialize an empty list to store loss values
-    for epoch in range(trainer.epoch_init, cfg.training.epochs):
+    for epoch in range(trainer.epoch_init, cfg.transformer_architecture.epochs):
         # Loop over batches
         #for idx_g in random.sample(range(ngraphs_train), ngraphs_train):
         #   loss = trainer.train(mu[idx_g * npnodes : (idx_g + 1) * npnodes, :], z_0[idx_g * npnodes : (idx_g + 1) * npnodes, :], Z[idx_g * npnodes : (idx_g + 1) * npnodes, :, :])
@@ -307,7 +307,7 @@ def do_training(cfg, dist):
         )
 
         if cfg.training.output_interval != -1:
-            if (epoch % cfg.training.output_interval) == 0 or epoch == 0 or epoch == (cfg.training.epochs-1): 
+            if (epoch % cfg.training.output_interval) == 0 or epoch == 0 or epoch == (cfg.transformer_architecture.epochs-1): 
                 # save checkpoint
                 save_checkpoint(
                     os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
