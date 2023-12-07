@@ -20,7 +20,7 @@ def objective(config, cfg):
     
     cfg.scheduler.lr = config["lr"] 
     cfg.scheduler.lr_decay = config["lr_decay"]
-    cfg.scheduler.N_heads = config["N_heads"]
+    cfg.transformer_architecture.N_heads = config["N_heads"]
     cfg.transformer_architecture.N_inn = config["N_inn"]
     cfg.transformer_architecture.N_g = config["N_g"]
     cfg.transformer_architecture.N_neu_MLP_p = config["N_neu_MLP_p"]
@@ -46,12 +46,12 @@ def main(cfg: DictConfig):
     search_space = {
         "lr": tune.loguniform(1e-4, 1e-1),
         "lr_decay": tune.loguniform(1e-3, 1e-1), 
-        "N_heads": tune.randint(1, 6),
-        "N_inn": tune.randint(1, 200),
-        "N_g": tune.randint(1, 200),
-        "N_neu_MLP_p": tune.randint(1, 10),
+        "N_heads": tune.randint(1, 4),
+        "N_inn": tune.randint(1, 50),
+        "N_g": tune.randint(1, 50),
+        "N_neu_MLP_p": tune.randint(1, 20),
         "N_hid_MLP_p": tune.randint(1, 10),
-        "N_neu_MLP_m": tune.randint(1, 10),
+        "N_neu_MLP_m": tune.randint(1, 20),
         "N_hid_MLP_m": tune.randint(1, 10),
     }
     algo = OptunaSearch()  

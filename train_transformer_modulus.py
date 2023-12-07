@@ -199,13 +199,19 @@ class MGNTrainer:
         """
 
         # Incremental loss function
-        for idx_t in range(2, self.cfg.transformer_architecture.N_timesteps):
-            loss = self.cfg.transformer_architecture.threshold + 1.
-            while (loss > self.cfg.transformer_architecture.threshold):
-                self.optimizer.zero_grad()
-                pred = self.model(mu, z_0, idx_t)
-                loss = mse(pred[:, 2:, :], Z[:, 1:idx_t, :], mask = 1)
-                self.backward(loss)
+        if self.cfg.transformer_architecture.incremental_loss:
+            for idx_t in range(2, self.cfg.transformer_architecture.N_timesteps):
+                loss = self.cfg.transformer_architecture.threshold + 1.
+                while (loss > self.cfg.transformer_architecture.threshold):
+                    self.optimizer.zero_grad()
+                    pred = self.model(mu, z_0, idx_t)
+                    loss = mse(pred[:, 2:, :], Z[:, 1:idx_t, :], mask = 1)
+                    self.backward(loss)
+        else:
+            self.optimizer.zero_grad()
+            pred = self.model(mu, z_0)
+            loss = mse(pred[:, 2:, :], Z[:, 1:, :], mask = 1)
+            self.backward(loss)
 
         return loss
 
@@ -287,7 +293,7 @@ def do_training(cfg, dist):
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
         # Loop over batches
         #for idx_g in random.sample(range(ngraphs_train), ngraphs_train):
-        #    loss = trainer.train(mu[idx_g * npnodes : (idx_g + 1) * npnodes, :], z_0[idx_g * npnodes : (idx_g + 1) * npnodes, :], Z[idx_g * npnodes : (idx_g + 1) * npnodes, :, :], states, ns)
+        #   loss = trainer.train(mu[idx_g * npnodes : (idx_g + 1) * npnodes, :], z_0[idx_g * npnodes : (idx_g + 1) * npnodes, :], Z[idx_g * npnodes : (idx_g + 1) * npnodes, :, :])
         loss = trainer.train(mu, z_0, Z)
         loss_vector.append(loss.cpu().detach().numpy())
 

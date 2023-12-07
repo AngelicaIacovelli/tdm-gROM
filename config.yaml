@@ -16,12 +16,12 @@
 work_directory: "."
 
 scheduler:
-  lr: 0.0002568168330296152 #optimize LSTM #optimize TRANSFORMER
-  lr_decay: 0.008033642156496669 #optimize LSTM #optimize TRANSFORMER
+  lr: 0.0111093 #optimize LSTM #optimize AE + TRANSFORMER
+  lr_decay: 0.0540696 #optimize LSTM #optimize AE + TRANSFORMER
 
 training:
-  batch_size: 20 #optimize LSTM #optimize AE
-  epochs: 500
+  batch_size: 10 #optimize LSTM #optimize AE
+  epochs: 100
   geometries: "test" #"healthy" for LSTM, "test" for AE --------------------
   train_test_split: 0.9
   loss_weight_boundary_nodes: 37 #optimize LSTM
@@ -43,13 +43,13 @@ architecture:
   hidden_dim: 58 #optimize LSTM
   in_feats: 17 #put 18 for LSTM and 17 for AE --------------------
   edge_feats: 9
-  latent_size_gnn: 36 #optimize LSTM #optimize AE
-  latent_size_mlp: 193 #optimize LSTM #optimize AE
-  number_hidden_layers_mlp: 2 #optimize LSTM #optimize AE
+  latent_size_gnn: 12 #optimize LSTM #optimize AE
+  latent_size_mlp: 178 #optimize LSTM #optimize AE
+  number_hidden_layers_mlp: 1 #optimize LSTM #optimize AE
   out_size: 2 
   autoloop_iterations: 1 #optimize LSTM
-  process_iterations: 2 #optimize LSTM #optimize AE
-  latent_size_AE: 87 #optimize AE
+  process_iterations: 0 #optimize LSTM #optimize AE
+  latent_size_AE: 41 #optimize AE
 
 hyperparameter_optimization:
   runs: 100
@@ -59,14 +59,16 @@ model:
 
 
 transformer_architecture:
+  epochs: 10000
   threshold: 1000000.0
-  N_heads: 4 #hpo Transformer
+  N_heads: 3 #hpo Transformer
   N_timesteps: 41
-  N_inn: 10 #hpo Transformer
-  N_g: 4 # hpo Transformer
-  N_neu_MLP_p: 30 # hpo Transformer
-  N_hid_MLP_p: 3  # hpo Transformer
-  N_neu_MLP_m: 30 # hpo Transformer
-  N_hid_MLP_m: 3  # hpo Transformer
+  N_inn: 48 #hpo Transformer
+  N_g: 21 # hpo Transformer
+  N_neu_MLP_p: 6 # hpo Transformer
+  N_hid_MLP_p: 5  # hpo Transformer
+  N_neu_MLP_m: 13 # hpo Transformer
+  N_hid_MLP_m: 4  # hpo Transformer
+  incremental_loss: "False"
   checkpoints_ckpt_path: "checkpoints_transformer"
   checkpoints_ckpt_name: "model.pt"

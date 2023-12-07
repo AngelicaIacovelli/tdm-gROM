@@ -128,7 +128,7 @@ class TransformerCell(Module):
 
         self.device = "cuda" if th.cuda.is_available() else "cpu"
 
-    def forward(self, mu, z_0, N_t):
+    def forward(self, mu, z_0, N_t = 41):
         """
         Forward step
 

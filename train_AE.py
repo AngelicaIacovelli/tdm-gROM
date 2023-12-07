@@ -246,6 +246,7 @@ def do_training(cfg, dist):
     logger.info("Training started...")
     loss_vector = []  # Initialize an empty list to store loss values
     for epoch in range(trainer.epoch_init, cfg.training.epochs):
+        print(len(trainer.dataloader))
         for graph in trainer.dataloader:
             loss = trainer.train(graph)
         loss_vector.append(
