@@ -181,6 +181,8 @@ class MGNTrainer:
             self.scaler.update()
         else:
             loss.backward()
+            # Gradient clipping (for stabilization and performance).
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm = 1.0, norm_type = 2.0, error_if_nonfinite = True)
             self.optimizer.step()
 
 
@@ -249,13 +251,31 @@ def do_training(cfg, dist):
     # enable eval mode
     AE_model.eval()
 
-    # load checkpoint
-    _ = load_checkpoint(
-        os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
-        models=AE_model,
-        device=device,
-        scaler=scaler,
-    )
+    if cfg.hyperparameter_optimization.flag == "True":
+
+        vecchia_directory = os.getcwd()
+        nuova_directory = "/expanse/lustre/scratch/aiacovelli/temp_project/tdm-gROM"
+        os.chdir("..")
+        os.chdir(nuova_directory)
+
+        # load checkpoint
+        _ = load_checkpoint(
+            os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
+            models=AE_model,
+            device=device,
+            scaler=scaler,
+        )
+
+        os.chdir(vecchia_directory)
+    
+    else:
+        # load checkpoint
+        _ = load_checkpoint(
+            os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
+            models=AE_model,
+            device=device,
+            scaler=scaler,
+        )
     
     # allocate variables
     npnodes = torch.sum(trainer.train_graphs[0].ndata["pivotal_nodes"]).item()
@@ -442,4 +462,4 @@ def main(cfg: DictConfig):
     do_training(cfg, dist)
 
 if __name__ == "__main__":
-    main()                                                                                                                                                                                                                              
+    main()

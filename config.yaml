@@ -65,18 +65,18 @@ architecture:
 # TRANSFORMER
 
 transformer_architecture:
-  lr: 0.0111093
-  lr_decay: 0.0540696
-  epochs: 10000
+  lr: 0.000599723 
+  lr_decay: 0.0159957
+  epochs: 500
   threshold: 1000000.0
-  N_heads: 2 #hpo Transformer
+  N_heads: 3 #hpo Transformer
   N_timesteps: 41
-  N_inn: 48 #hpo Transformer
-  N_g: 21 # hpo Transformer
+  N_inn: 30 #hpo Transformer
+  N_g: 17 # hpo Transformer
   N_neu_MLP_p: 6 # hpo Transformer
-  N_hid_MLP_p: 5  # hpo Transformer
-  N_neu_MLP_m: 13 # hpo Transformer
-  N_hid_MLP_m: 4  # hpo Transformer
+  N_hid_MLP_p: 2  # hpo Transformer
+  N_neu_MLP_m: 15 # hpo Transformer
+  N_hid_MLP_m: 6  # hpo Transformer
   incremental_loss: "False"
   checkpoints_ckpt_path: "checkpoints_transformer"
   checkpoints_ckpt_name: "model.pt"
