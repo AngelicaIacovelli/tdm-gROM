@@ -17,6 +17,7 @@ work_directory: "."
 
 hyperparameter_optimization:
   runs: 100
+  flag: "True"
 
 model:
   LSTM: "False" # "True" for LSTM model, "False" for Transformer --------------------
@@ -32,7 +33,7 @@ testing:
 
 scheduler:
   lr: 0.00020325566074545003 #optimize LSTM #optimize AE 
-  lr_decay: 0.0.003746192435115448 #optimize LSTM #optimize AE 
+  lr_decay: 0.003746192435115448 #optimize LSTM #optimize AE 
 
 training:
   batch_size: 10 #optimize LSTM #optimize AE
@@ -68,7 +69,7 @@ transformer_architecture:
   lr_decay: 0.0540696
   epochs: 10000
   threshold: 1000000.0
-  N_heads: 3 #hpo Transformer
+  N_heads: 2 #hpo Transformer
   N_timesteps: 41
   N_inn: 48 #hpo Transformer
   N_g: 21 # hpo Transformer
