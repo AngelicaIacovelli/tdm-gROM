@@ -17,7 +17,7 @@ work_directory: "."
 
 hyperparameter_optimization:
   runs: 100
-  flag: "True"
+  flag: "False" # "True" for Transformer hpo, "False" otherwise --------------------
 
 model:
   LSTM: "False" # "True" for LSTM model, "False" for Transformer --------------------
@@ -38,7 +38,7 @@ scheduler:
 training:
   batch_size: 10 #optimize LSTM #optimize AE
   epochs: 100
-  geometries: "test" #"healthy" for LSTM, "test" for AE --------------------
+  geometries: "test" #"healthy" for LSTM, "test" for AE , "one_geometry" for AE --------------------
   train_test_split: 0.9
   loss_weight_boundary_nodes: 37 #optimize LSTM
   output_interval: 50
@@ -61,22 +61,21 @@ architecture:
   latent_size_AE: 41 #optimize AE
 
 
-
 # TRANSFORMER
 
 transformer_architecture:
-  lr: 0.000599723 
-  lr_decay: 0.0159957
-  epochs: 500
+  lr: 0.000117216
+  lr_decay: 0.00571391
+  epochs: 1
   threshold: 1000000.0
-  N_heads: 3 #hpo Transformer
+  N_heads: 2 #hpo Transformer
   N_timesteps: 41
-  N_inn: 30 #hpo Transformer
-  N_g: 17 # hpo Transformer
-  N_neu_MLP_p: 6 # hpo Transformer
-  N_hid_MLP_p: 2  # hpo Transformer
-  N_neu_MLP_m: 15 # hpo Transformer
-  N_hid_MLP_m: 6  # hpo Transformer
+  N_inn: 5 #hpo Transformer
+  N_g: 10 # hpo Transformer
+  N_neu_MLP_p: 10 # hpo Transformer
+  N_hid_MLP_p: 4  # hpo Transformer
+  N_neu_MLP_m: 16 # hpo Transformer
+  N_hid_MLP_m: 4  # hpo Transformer
   incremental_loss: "False"
   checkpoints_ckpt_path: "checkpoints_transformer"
   checkpoints_ckpt_name: "model.pt"

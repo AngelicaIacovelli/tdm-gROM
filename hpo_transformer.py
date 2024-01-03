@@ -46,7 +46,7 @@ def main(cfg: DictConfig):
     search_space = {
         "lr": tune.loguniform(1e-4, 1e-1),
         "lr_decay": tune.loguniform(1e-3, 1e-1), 
-        "N_heads": tune.randint(1, 4),
+        "N_heads": tune.randint(1, 3),
         "N_inn": tune.randint(1, 50),
         "N_g": tune.randint(1, 50),
         "N_neu_MLP_p": tune.randint(1, 20),

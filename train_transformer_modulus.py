@@ -259,23 +259,29 @@ def do_training(cfg, dist):
         os.chdir(nuova_directory)
 
         # load checkpoint
-        _ = load_checkpoint(
+        load_epoch = load_checkpoint(
             os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
             models=AE_model,
             device=device,
             scaler=scaler,
         )
 
+        if load_epoch == 0:
+            raise ValueError("Checkpoints not found!")
+
         os.chdir(vecchia_directory)
     
     else:
         # load checkpoint
-        _ = load_checkpoint(
+        load_epoch = load_checkpoint(
             os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
             models=AE_model,
             device=device,
             scaler=scaler,
         )
+
+        if load_epoch == 0:
+            raise ValueError("Checkpoints not found!")
     
     # allocate variables
     npnodes = torch.sum(trainer.train_graphs[0].ndata["pivotal_nodes"]).item()
@@ -330,7 +336,7 @@ def do_training(cfg, dist):
             if (epoch % cfg.training.output_interval) == 0 or epoch == 0 or epoch == (cfg.transformer_architecture.epochs-1): 
                 # save checkpoint
                 save_checkpoint(
-                    os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
+                    os.path.join(cfg.transformer_architecture.checkpoints_ckpt_path, cfg.transformer_architecture.checkpoints_ckpt_name),
                     models=trainer.model,
                     optimizer=trainer.optimizer,
                     scheduler=trainer.scheduler,
@@ -387,8 +393,12 @@ def do_training(cfg, dist):
         for istride in range(trainer.stride):
             ns = graph.ndata["nfeatures"][:, :, istride]
             graph.ndata["current_state"] = ns
+            ## 
+            _ = torch.reshape(AE_model.graph_reduction(graph), (npnodes, cfg.architecture.latent_size_AE))
+            ##
             with torch.no_grad():
                 decoded[:, :, istride] = AE_model.graph_recovery(graph, torch.reshape(pred[:, istride, :], (-1,)))
+                #print(decoded[:,:,istride])
         decoded[:, 0, :] = decoded[:, 0, :] * trainer.params["statistics"]["pressure"]["stdv"] + trainer.params["statistics"]["pressure"]["mean"]
         decoded[:, 1, :] = decoded[:, 1, :] * trainer.params["statistics"]["flowrate"]["stdv"] + trainer.params["statistics"]["flowrate"]["mean"]
         graph.ndata["nfeatures"][:, 0, :] = graph.ndata["nfeatures"][:, 0, :] * trainer.params["statistics"]["pressure"]["stdv"] + trainer.params["statistics"]["pressure"]["mean"]        

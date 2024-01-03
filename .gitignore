@@ -17,3 +17,4 @@ core*
 download_checkpoints.sh
 gradients/
 std.txt
+checkpoints_transformer

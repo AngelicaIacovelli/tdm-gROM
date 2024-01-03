@@ -615,9 +615,13 @@ def generate_graph(point_data, points, edges1, edges2, add_boundary_edges, rcr_v
 
         # Ora 'pivotalnodes_list' contiene una lista di 0 e 1 che indica i nodi pivot, con 1 sia per il primo che per l'ultimo nodo.
         
-        
-        # Shortest path calculation 
 
+        #CANCELLA QUESTE 2 RIGHE UNA VOLTA FINITI ESPERIMENTI: 
+        pivotalnodes_list = [1] * len(pivotalnodes_list)
+        graph.ndata["pivotal_nodes"] = th.tensor(pivotalnodes_list)
+        
+
+        # Shortest path calculation 
         num_nodes = graph.ndata["branch_id"].shape[0]
 
         pivotalnodes_list = np.array(pivotalnodes_list)

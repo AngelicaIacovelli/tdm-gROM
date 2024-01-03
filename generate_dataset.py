@@ -364,6 +364,8 @@ def generate_normalized_graphs(input_dir, norm_type, geometries, cfg, statistics
             list_of_models = ["s0104_0001", "s0080_0001", "s0140_2001"]
         elif geometries == "test":
             list_of_models = ["s0090_0001", "s0091_0001", "s0093_0001", "s0094_0001" ]
+        elif geometries == "one_geometry":
+            list_of_models = ["s0090_0001"]
         else:    
             raise ValueError("Type of geometry " + geometries + "does not exist")
 

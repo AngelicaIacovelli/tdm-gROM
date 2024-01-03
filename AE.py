@@ -128,7 +128,7 @@ class AECell(Module):
             cfg.architecture.number_hidden_layers_mlp,
         )
         self.decoder_nodes_recovery = MLP(
-            cfg.architecture.latent_size_gnn,
+            cfg.architecture.latent_size_gnn, 
             cfg.architecture.out_size,
             cfg.architecture.latent_size_mlp,
             cfg.architecture.number_hidden_layers_mlp,
@@ -266,9 +266,7 @@ class AECell(Module):
             dictionary (key: 'pred_labels', value: decoded features)
 
         """
-        # print("DEC NODES REC: Pre MLP", nodes.data["proc_node"])
         h = self.decoder_nodes_recovery(nodes.data["proc_node"])
-        # print("DEC NODES REC: Post MLP", h)
         return {"h": h}
     
     
