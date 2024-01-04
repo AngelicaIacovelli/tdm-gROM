@@ -50,7 +50,7 @@ checkpoints:
 
 architecture:
   hidden_dim: 58 #optimize LSTM
-  in_feats: 17 #put 18 for LSTM and 17 for AE --------------------
+  in_feats: 18 #put 18 for LSTM and 17 for AE --------------------
   edge_feats: 9
   latent_size_gnn: 12 #optimize LSTM #optimize AE
   latent_size_mlp: 178 #optimize LSTM #optimize AE
