@@ -128,7 +128,7 @@ class AECell(Module):
             cfg.architecture.number_hidden_layers_mlp,
         )
         self.decoder_nodes_recovery = MLP(
-            cfg.architecture.latent_size_gnn, 
+            cfg.architecture.latent_size_AE, # Cancella AE e ripristina: gnn
             cfg.architecture.out_size,
             cfg.architecture.latent_size_mlp,
             cfg.architecture.number_hidden_layers_mlp,
@@ -232,10 +232,8 @@ class AECell(Module):
             dictionary (key: 'proc_edge', value: encoded features)
 
         """
-        features = edges.data["efeatures"]
-        # print("ENC EDGES REC: Pre MLP", features)        
+        features = edges.data["efeatures"]       
         enc_features = self.encoder_edges_recovery(features)
-        # print("ENC EDGES REC: Post MLP", enc_features)
         return {"proc_edge": enc_features}
 
     def decode_nodes_reduction(self, nodes):
@@ -249,9 +247,7 @@ class AECell(Module):
             dictionary (key: 'pred_labels', value: decoded features)
 
         """
-        # print("DEC NODES RED: Pre MLP", nodes.data["proc_node"])
         h = self.decoder_nodes_reduction(nodes.data["proc_node"])
-        # print("DEC NODES RED: Post MLP", h)
         return {"h": h}
     
     
@@ -266,7 +262,7 @@ class AECell(Module):
             dictionary (key: 'pred_labels', value: decoded features)
 
         """
-        h = self.decoder_nodes_recovery(nodes.data["proc_node"])
+        h = self.decoder_nodes_recovery(nodes.data["h"]) #ripristina: h = self.decoder_nodes_recovery(nodes.data["proc_node"])
         return {"h": h}
     
     
@@ -286,14 +282,8 @@ class AECell(Module):
         f2 = edges.src['proc_node']
         f3 = edges.dst['proc_node']
 
-        #print("Pre MLP f1", f1)
-        #print("Pre MLP f2", f2)
-        #print("Pre MLP f3", f3)
-
         proc_edge = self.processor_edges_reduction[index](th.cat((f1, f2, f3), 1))
         proc_edge = proc_edge + f1
-
-        #print("Post MLP", proc_edge)
 
         return {'proc_edge': proc_edge}
     
@@ -416,6 +406,8 @@ class AECell(Module):
     
     def graph_recovery(self, g, z):
 
+        print("h", g.ndata["h"] )
+
         # controllare se g e' grafo singolo o batch
         graphs = dgl.unbatch(g)
 
@@ -461,6 +453,7 @@ class AECell(Module):
         # print("Post R: ", R)
 
         g.ndata["R"] = R
+        print("R", R)
 
         # ENCODE
         g.apply_nodes(self.encode_nodes_recovery)

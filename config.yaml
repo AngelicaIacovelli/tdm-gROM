@@ -20,7 +20,7 @@ hyperparameter_optimization:
   flag: "False" # "True" for Transformer hpo, "False" otherwise --------------------
 
 model:
-  LSTM: "False" # "True" for LSTM model, "False" for Transformer --------------------
+  LSTM: "True" # "True" for LSTM model, "False" for Transformer --------------------
 
 performance:
   amp: False
@@ -37,8 +37,8 @@ scheduler:
 
 training:
   batch_size: 10 #optimize LSTM #optimize AE
-  epochs: 100
-  geometries: "test" #"healthy" for LSTM, "test" for AE , "one_geometry" for AE --------------------
+  epochs: 500
+  geometries: "healthy" #"healthy" for LSTM, "test" or "one_geometry" for AE --------------------
   train_test_split: 0.9
   loss_weight_boundary_nodes: 37 #optimize LSTM
   output_interval: 50
@@ -66,7 +66,7 @@ architecture:
 transformer_architecture:
   lr: 0.000117216
   lr_decay: 0.00571391
-  epochs: 1
+  epochs: 100
   threshold: 1000000.0
   N_heads: 2 #hpo Transformer
   N_timesteps: 41
