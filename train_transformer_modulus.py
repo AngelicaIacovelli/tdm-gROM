@@ -253,24 +253,38 @@ def do_training(cfg, dist):
 
     if cfg.hyperparameter_optimization.flag == "True":
 
-        vecchia_directory = os.getcwd()
-        nuova_directory = "/expanse/lustre/scratch/aiacovelli/temp_project/tdm-gROM"
-        os.chdir("..")
-        os.chdir(nuova_directory)
+        #vecchia_directory = os.getcwd()
+        #nuova_directory = "/expanse/lustre/scratch/aiacovelli/temp_project/tdm_grom/tdm-gROM"
+        # os.chdir("..")
+        #os.chdir(nuova_directory)
 
         # load checkpoint
         load_epoch = load_checkpoint(
-            os.path.join(cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
+            "/expanse/lustre/scratch/aiacovelli/temp_project/tdm_grom/tdm-gROM/checkpoints/model.pt/",
             models=AE_model,
             device=device,
             scaler=scaler,
         )
+        '''
+        load_epoch = load_checkpoint(
+            os.path.join(nuova_directory, cfg.checkpoints.ckpt_path, cfg.checkpoints.ckpt_name),
+            models=AE_model,
+            device=device,
+            scaler=scaler,
+        )
+        '''
+
+        #directory = os.getcwd() 
+        #print("nuova dir", directory)
+
+        #os.chdir(vecchia_directory)
+        #print("vecchia dir", vecchia_directory)
+
 
         if load_epoch == 0:
             raise ValueError("Checkpoints not found!")
 
-        os.chdir(vecchia_directory)
-    
+            
     else:
         # load checkpoint
         load_epoch = load_checkpoint(
@@ -280,9 +294,12 @@ def do_training(cfg, dist):
             scaler=scaler,
         )
 
+        directory = os.getcwd() 
+        print(directory) # /expanse/lustre/scratch/aiacovelli/temp_project/tdm_grom/tdm-gROM
+
         if load_epoch == 0:
             raise ValueError("Checkpoints not found!")
-    
+
     # allocate variables
     npnodes = torch.sum(trainer.train_graphs[0].ndata["pivotal_nodes"]).item()
     ngraphs_train = len(trainer.train_graphs)
@@ -357,7 +374,7 @@ def do_training(cfg, dist):
             return TypeError("Token is not serializable")
 
         if cfg.training.output_interval != -1:
-            with open(cfg.checkpoints.ckpt_path + "/parameters.json", "w") as outf:
+            with open(cfg.transformer_architecture.checkpoints_ckpt_path + "/parameters.json", "w") as outf:
                 json.dump(trainer.params, outf, default=default, indent=4)
     logger.info("Training completed!")
 

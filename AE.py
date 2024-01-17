@@ -262,7 +262,7 @@ class AECell(Module):
             dictionary (key: 'pred_labels', value: decoded features)
 
         """
-        h = self.decoder_nodes_recovery(nodes.data["proc_node"]) 
+        h = self.decoder_nodes_recovery(nodes.data["proc_node"])
         return {"h": h}
     
     
@@ -406,7 +406,7 @@ class AECell(Module):
     
     def graph_recovery(self, g, z):
 
-        print("h", g.ndata["h"] )
+        #print("h", g.ndata["h"] )
 
         # controllare se g e' grafo singolo o batch
         graphs = dgl.unbatch(g)
@@ -453,7 +453,7 @@ class AECell(Module):
         # print("Post R: ", R)
 
         g.ndata["R"] = R
-        print("R", R)
+        #print("R", R)
 
         # ENCODE
         g.apply_nodes(self.encode_nodes_recovery)
