@@ -34,6 +34,7 @@ from tqdm import tqdm
 import vtk
 
 def evaluate_model(cfg, logger, model, params, graphs):
+    start = time.time()
     rollout = Rollout(logger, cfg, model, params, graphs)
     testset = params["test_split"]
     ep_tot = 0
@@ -48,6 +49,7 @@ def evaluate_model(cfg, logger, model, params, graphs):
     eq_tot = eq_tot / len(testset)
     logger.info(f"Average relative error in pressure: {ep_tot * 100}%")
     logger.info(f"Average relative error in flowrate: {eq_tot * 100}%")
+    logger.info(f"Testing time: {(time.time()-start):10.3e}")
     return ep_tot, eq_tot
 
 

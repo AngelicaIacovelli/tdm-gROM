@@ -6,7 +6,7 @@ raw_dataset/vtps
 gromvenv/
 __pycache__/
 outputs
-checkpoints
+checkpoints*
 launch.sh
 launch_hpo.sh
 gpualloc.sh
