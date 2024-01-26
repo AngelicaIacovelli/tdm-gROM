@@ -10,7 +10,7 @@ import numpy as np
 import dgl.function as fn
 import dgl
 
-from linear_multihead_attention import LinearMultiheadAttention
+#from linear_multihead_attention import LinearMultiheadAttention
 
 class MLP(Module):
     """
@@ -98,16 +98,17 @@ class LNODECell(Module):
     z_0_physical -> matrix of dimension (number of physical variables, number of simulations)
 
     Z_tilde      -> matrix of dimension (number of outputs, number of time steps, number of simulations).
-
+    
+    Transformer: number of physical variables = number of outputs
     """
 
     def __init__(self, cfg, dt):
         super(LNODECell, self).__init__()
 
-        self.N_states = cfg.lnode_architecture.N_states
-        self.N_parameters = cfg.lnode_architecture.N_parameters
-        self.N_hid_MLP = cfg.lnode_architecture.N_hid_MLP
-        self.N_neu_MLP = cfg.lnode_architecture.N_neu_MLP
+        self.N_states = cfg.LNODEs_architecture.N_states
+        self.N_parameters = cfg.LNODEs_architecture.N_parameters
+        self.N_hid_MLP = cfg.LNODEs_architecture.N_hid_MLP
+        self.N_neu_MLP = cfg.LNODEs_architecture.N_neu_MLP
 
         self.dt = dt
 
@@ -117,7 +118,7 @@ class LNODECell(Module):
 
     def forward(self, params, z_0_physical):
         num_outs = z_0_physical.shape[0] 
-        z_0_latent = th.zeros((self.N_states - num_outs, z_0_physical.shape[1]))
+        z_0_latent = th.zeros((self.N_states - num_outs, z_0_physical.shape[1]), device=self.device)
         Z_tilde = th.cat((z_0_physical, z_0_latent), dim = 0).unsqueeze(-1)
         
         for idx_t in range(params.shape[1] - 1):
