@@ -321,6 +321,11 @@ def do_training(cfg, dist):
             graph.ndata["current_state"] = ns
 
             with torch.no_grad():
+                reduction_output = AE_model.graph_reduction(graph)
+                # print(f"Reduction output size: {reduction_output.size()}")  
+                # print(f"Before reshaping Z: {Z.size()}")  
+                # print(f"Target slice size: {Z[idx_g * npnodes : (idx_g + 1) * npnodes, istride, :].size()}")
+                # print(f"Before reshaping npnodes: {npnodes}")
                 Z[idx_g * npnodes : (idx_g + 1) * npnodes, istride, :] = torch.reshape(AE_model.graph_reduction(graph), (npnodes, cfg.architecture.latent_size_AE))
 
         # impose boundary condition
