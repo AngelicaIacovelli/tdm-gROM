@@ -120,7 +120,7 @@ class LNODECell(Module):
         num_outs = z_0_physical.shape[0] 
         z_0_latent = th.zeros((self.N_states - num_outs, z_0_physical.shape[1]), device=self.device)
         Z_tilde = th.cat((z_0_physical, z_0_latent), dim = 0).unsqueeze(-1)
-        
+
         for idx_t in range(params.shape[1] - 1):
             Z_tilde = th.cat((Z_tilde, (Z_tilde[:, :, -1] + self.dt * self.NN(th.cat((Z_tilde[:, :, -1], params[:, idx_t, :]), dim = 0).permute(1, 0)).permute(1, 0)).unsqueeze(-1)), dim = 2)
 

@@ -66,7 +66,7 @@ architecture:
 transformer_architecture:
   lr: 0.000117216
   lr_decay: 0.00571391
-  epochs: 100
+  epochs: 5
   threshold: 1000000.0
   N_heads: 2 #hpo Transformer
   N_timesteps: 41
@@ -84,14 +84,14 @@ transformer_architecture:
   # LNODEs
 
 LNODEs_architecture:
-  lr: 0.000117216
-  lr_decay: 0.00571391
+  lr: 0.0117216 #hpo
+  lr_decay: 1 #hpo
   epochs: 100
   threshold: 1000000.0
   N_timesteps: 41
-  N_states: 40000 # > 32253 somma di pressione e flowrate * nnodes totali latenti (è z_t) il numero minimo dovrebbe essere latent_size_AE #hpo da 19 a 30
-  N_parameters: 3 #hpo
-  N_hid_MLP: 3 #hpo
-  N_neu_MLP: 3 #hpo
+  N_states: 10000 # hpo il numero minimo dovrebbe essere latent_size_AE #hpo da 19*npnodes=5472 a 10000
+  N_parameters: 1
+  N_hid_MLP: 100 #hpo
+  N_neu_MLP: 40 #hpo
   checkpoints_ckpt_path: "checkpoints_LNODEs"
   checkpoints_ckpt_name: "model.pt"

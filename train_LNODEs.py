@@ -294,10 +294,10 @@ def do_training(cfg, dist):
     # allocate variables
     npnodes = torch.sum(trainer.train_graphs[0].ndata["pivotal_nodes"]).item()
     ngraphs_train = len(trainer.train_graphs)
-    total_nodes_train = npnodes * ngraphs_train
-    Z = torch.zeros(cfg.architecture.latent_size_AE, cfg.LNODEs_architecture.N_timesteps, total_nodes_train, device=trainer.device)
-    z_0 = torch.zeros(cfg.architecture.latent_size_AE, total_nodes_train, device=trainer.device)
-    mu = torch.zeros(1, cfg.LNODEs_architecture.N_timesteps, total_nodes_train, device=trainer.device)
+    Z = torch.zeros(cfg.architecture.latent_size_AE * npnodes, cfg.LNODEs_architecture.N_timesteps, ngraphs_train, device=trainer.device)
+    z_0 = torch.zeros(cfg.architecture.latent_size_AE * npnodes, ngraphs_train, device=trainer.device)
+    mu = torch.zeros(1, cfg.LNODEs_architecture.N_timesteps, ngraphs_train, device=trainer.device)
+    #print(Z.shape)
     for idx_g in range(ngraphs_train):
         # read graph
         graph = trainer.train_graphs[idx_g]
@@ -317,14 +317,15 @@ def do_training(cfg, dist):
                 # print(f"Before reshaping Z: {Z.size()}")  
                 # print(f"Target slice size: {Z[ :, istride, idx_g * npnodes : (idx_g + 1) * npnodes].size()}")
                 # print(f"Before reshaping npnodes: {npnodes}")  
-                Z[ :, istride, idx_g * npnodes : (idx_g + 1) * npnodes] = torch.reshape(AE_model.graph_reduction(graph), (cfg.architecture.latent_size_AE, npnodes))
-
+                Z[:, istride, idx_g] = reduction_output
+                #print("Z", Z.shape)
                                 
+                               
         # impose boundary condition
-        mu[0, :, idx_g * npnodes : (idx_g + 1) * npnodes] = graph.ndata["nfeatures"][0, 1, :]
+        mu[0, :, idx_g] = graph.ndata["nfeatures"][0, 1, :]
 
-        # impose initial condition
-        z_0[:, idx_g * npnodes : (idx_g + 1) * npnodes] = Z[:, 0 , idx_g * npnodes : (idx_g + 1) * npnodes]
+    # impose initial condition
+    z_0 = Z[:, 0 , :]
 
     # training loop
     start = time.time()
@@ -375,6 +376,26 @@ def do_training(cfg, dist):
                 json.dump(trainer.params, outf, default=default, indent=4)
     logger.info("Training completed!")
 
+    # PLOT
+
+    # Estrai la prima componente delle 19 dal tensore Z
+    componente_1 = Z[0, :, 0:5]
+    # Assuming componente_1 is a torch.Tensor on cuda:0
+    # Use .cpu() to copy it to the CPU before plotting
+    componente_1_cpu = componente_1.cpu()
+
+    # Crea l'asse x per il tempo (41 timesteps)
+    timesteps = range(cfg.LNODEs_architecture.N_timesteps)
+
+    # Crea il plot
+    plt.figure()
+    plt.plot(timesteps, componente_1_cpu)  # Assuming componente_1_cpu is a 1D tensor
+    plt.title('Plot della prima componente di Z rispetto al tempo')
+    plt.xlabel('Tempo')
+    plt.ylabel('Prima Componente di Z')
+    plt.savefig("plot.png", bbox_inches="tight")
+
+
     # Plot loss_vector
     plt.figure()
     ax = plt.axes()
@@ -399,8 +420,14 @@ def do_training(cfg, dist):
         graph.ndata["current_state"] = ns
         with torch.no_grad():
             mu = graph.ndata["nfeatures"][0, 1, :].unsqueeze(0).repeat(npnodes, 1)
-            z_0 = torch.reshape(AE_model.graph_reduction(graph), (npnodes, cfg.architecture.latent_size_AE))
-            pred = trainer.model(mu, z_0)[:, 1:, :]
+            mu = mu.permute(1, 0)
+            mu = mu.unsqueeze(0)
+            #print("mu",mu.shape)
+            z_0 = AE_model.graph_reduction(graph)
+            # z_0 = z_0.reshape(cfg.architecture.latent_size_AE * npnodes, 1)
+            z_0 = z_0.reshape(cfg.architecture.latent_size_AE , npnodes)
+            #print("z_0",z_0.shape)
+            pred = trainer.model(mu, z_0)
         
         # inference on decoder
         decoded = torch.zeros(graph.number_of_nodes(), cfg.architecture.out_size, cfg.LNODEs_architecture.N_timesteps, device=trainer.device)
@@ -411,6 +438,8 @@ def do_training(cfg, dist):
             _ = torch.reshape(AE_model.graph_reduction(graph), (npnodes, cfg.architecture.latent_size_AE))
             ##
             with torch.no_grad():
+                # print("pred:", pred[:, istride, :].shape)
+                # print("total_pred", pred.shape)
                 decoded[:, :, istride] = AE_model.graph_recovery(graph, torch.reshape(pred[:, istride, :], (-1,)))
                 #print(decoded[:,:,istride])
         decoded[:, 0, :] = decoded[:, 0, :] * trainer.params["statistics"]["pressure"]["stdv"] + trainer.params["statistics"]["pressure"]["mean"]

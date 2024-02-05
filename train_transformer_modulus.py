@@ -322,15 +322,10 @@ def do_training(cfg, dist):
 
             with torch.no_grad():
                 reduction_output = AE_model.graph_reduction(graph)
-                # print(f"Reduction output size: {reduction_output.size()}")  
-                # print(f"Before reshaping Z: {Z.size()}")  
-                # print(f"Target slice size: {Z[idx_g * npnodes : (idx_g + 1) * npnodes, istride, :].size()}")
-                # print(f"Before reshaping npnodes: {npnodes}")
                 Z[idx_g * npnodes : (idx_g + 1) * npnodes, istride, :] = torch.reshape(AE_model.graph_reduction(graph), (npnodes, cfg.architecture.latent_size_AE))
 
         # impose boundary condition
         mu[idx_g * npnodes : (idx_g + 1) * npnodes, :] = graph.ndata["nfeatures"][0, 1, :]
-
         # impose initial condition
         z_0[idx_g * npnodes : (idx_g + 1) * npnodes, :] = Z[idx_g * npnodes : (idx_g + 1) * npnodes, 0, :]
 
@@ -419,6 +414,8 @@ def do_training(cfg, dist):
             _ = torch.reshape(AE_model.graph_reduction(graph), (npnodes, cfg.architecture.latent_size_AE))
             ##
             with torch.no_grad():
+                print("pred:", pred[:, istride, :].shape)
+                print("total_pred", pred.shape)
                 decoded[:, :, istride] = AE_model.graph_recovery(graph, torch.reshape(pred[:, istride, :], (-1,)))
                 #print(decoded[:,:,istride])
         decoded[:, 0, :] = decoded[:, 0, :] * trainer.params["statistics"]["pressure"]["stdv"] + trainer.params["statistics"]["pressure"]["mean"]
