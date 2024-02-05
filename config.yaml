@@ -17,7 +17,7 @@ work_directory: "."
 
 hyperparameter_optimization:
   runs: 100
-  flag: "False" # "True" for Transformer hpo, "False" otherwise --------------------
+  flag: "True" # "True" for Transformer hpo or LNODES hpo, "False" otherwise --------------------
 
 model:
   LSTM: "False" # "True" for LSTM model, "False" for Transformer --------------------
@@ -86,7 +86,7 @@ transformer_architecture:
 LNODEs_architecture:
   lr: 0.0117216 #hpo
   lr_decay: 1 #hpo
-  epochs: 100
+  epochs: 1000
   threshold: 1000000.0
   N_timesteps: 41
   N_states: 10000 # hpo il numero minimo dovrebbe essere latent_size_AE #hpo da 19*npnodes=5472 a 10000
