@@ -13,16 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#  LSTM config
+
+#  LNODEs config
 
 work_directory: "."
 
 hyperparameter_optimization:
   runs: 100
-  flag: "False" # "True" for Transformer hpo or LNODES hpo, "False" otherwise --------------------
+  flag: "True" # "True" for Transformer hpo or LNODES hpo, "False" otherwise --------------------
 
 model:
-  LSTM: "True" # "True" for LSTM model, "False" for Transformer --------------------
+  LSTM: "False" # "True" for LSTM model, "False" for Transformer --------------------
 
 performance:
   amp: False
@@ -39,8 +40,8 @@ scheduler:
 
 training:
   batch_size: 10 #optimize LSTM #optimize AE
-  epochs: 500 #---------------------------------------------------------------------------------------
-  geometries: "healthy" #"healthy" for LSTM, "test" or "one_geometry" for AE --------------------
+  epochs: 100 #---------------------------------------------------------------------------------------
+  geometries: "one_geometry" #"healthy" for LSTM, "test" or "one_geometry" for AE --------------------
   train_test_split: 0.9
   loss_weight_boundary_nodes: 1 #optimize LSTM
   output_interval: 50
@@ -52,7 +53,7 @@ checkpoints:
 
 architecture:
   hidden_dim: 42 #optimize LSTM
-  in_feats: 18 #put 18 for LSTM and 17 for AE --------------------
+  in_feats: 17 #put 18 for LSTM and 17 for AE --------------------
   edge_feats: 9
   latent_size_gnn: 9 #optimize LSTM #optimize AE
   latent_size_mlp: 53 #optimize LSTM #optimize AE
