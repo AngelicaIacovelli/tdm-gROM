@@ -34,11 +34,11 @@ testing:
 # LSTM and AE 
 
 scheduler:
-  lr: 0.00013057147756019883 #optimize LSTM #optimize AE 
-  lr_decay: 0.02207028405136984 #optimize LSTM #optimize AE 
+  lr: 0.0007604419161091386 #optimize LSTM #optimize AE 
+  lr_decay: 0.0013667519961082207 #optimize LSTM #optimize AE 
 
 training:
-  batch_size: 10 #optimize LSTM #optimize AE
+  batch_size: 17 #optimize LSTM #optimize AE
   epochs: 500 #---------------------------------------------------------------------------------------
   geometries: "healthy" #"healthy" for LSTM, "test" or "one_geometry" for AE --------------------
   train_test_split: 0.9
@@ -54,12 +54,12 @@ architecture:
   hidden_dim: 42 #optimize LSTM
   in_feats: 18 #put 18 for LSTM and 17 for AE --------------------
   edge_feats: 9
-  latent_size_gnn: 9 #optimize LSTM #optimize AE
-  latent_size_mlp: 53 #optimize LSTM #optimize AE
+  latent_size_gnn: 46 #optimize LSTM #optimize AE
+  latent_size_mlp: 182 #optimize LSTM #optimize AE
   number_hidden_layers_mlp: 1 #optimize LSTM #optimize AE
   out_size: 2 
   autoloop_iterations: 1 #optimize LSTM
-  process_iterations: 3 #optimize LSTM #optimize AE
+  process_iterations: 1 #optimize LSTM #optimize AE
   latent_size_AE: 19 #optimize AE
 
 

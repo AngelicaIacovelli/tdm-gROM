@@ -19,6 +19,7 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import csv
 from LSTM import GLSTMCell
 from torch.cuda.amp import GradScaler
 from generate_dataset import generate_normalized_graphs
@@ -314,6 +315,14 @@ class Rollout:
         ax.plot(q_exact_values, label="exact")
         ax.legend()
         plt.savefig("flowrate.png", bbox_inches="tight")
+
+        # Writing to CSV
+        with open('LSTM.csv', mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['p_pred', 'p_exact', 'q_pred', 'q_exact'])
+            for i in range(len(p_pred_values)):
+                writer.writerow([p_pred_values[i], p_exact_values[i], q_pred_values[i], q_exact_values[i]])
+
 
     def write_vtk_file(self, graph_name, outfile, outdir=".", vtkcombo=False):
         """
